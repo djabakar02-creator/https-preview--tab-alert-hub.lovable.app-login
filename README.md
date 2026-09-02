@@ -59,5 +59,5 @@ src/
   lib/          auth, permissions, délais, dossiers (store + CSV), ora, dates
   pages/        Login, Dashboard, Registre (fiche, formulaire, import), Rapports, Ora
   components/   Layout (en‑tête, horloge, navigation), ui (badges, modale)
-public/fonts/   Archivo & Archivo Black embarquées (hors ligne)
+public/fonts/   Archivo & Archivo Black embarquées (hors ligne), repli Google Fonts
 ```
