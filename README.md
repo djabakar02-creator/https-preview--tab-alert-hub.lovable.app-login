@@ -131,6 +131,52 @@ compatible OpenAI, sans toucher au code :
 Sans clé, rien ne casse : Ora répond via Claude sur une page publiée, sinon via
 l'analyse locale déterministe.
 
+## Déploiement en service partagé (formule recommandée)
+
+Les agents accèdent au registre par navigateur ; les dossiers vivent sur le
+serveur, pas dans chaque poste.
+
+```bash
+npm run build
+ORA_SECRET=$(openssl rand -hex 32) \
+ORA_API_KEY=votre_clé \
+ORA_DONNEES=/var/lib/beac-drc/registre.json \
+PORT=8787 npm run service
+```
+
+| Variable | Rôle |
+| --- | --- |
+| `ORA_SECRET` | Signe les cookies de session. **Obligatoire** : sans elle, toutes les sessions tombent à chaque redémarrage. |
+| `ORA_DONNEES` | Fichier du registre partagé. À sauvegarder comme une base de données. |
+| `ORA_COOKIE_SECURISE=1` | À poser dès que le service est derrière HTTPS. |
+
+Le registre est un fichier JSON écrit de façon atomique, ce qui suffit au volume
+d'un service et évite d'imposer une base de données. Chaque navigateur relit le
+registre toutes les quinze secondes et au retour sur l'onglet : un agent voit
+donc les décisions de la hiérarchie sans recharger la page.
+
+### Ce que le service refuse, quoi qu'affiche l'interface
+
+Masquer un bouton ne protège rien : une requête peut toujours être forgée. Les
+permissions sont donc vérifiées à l'écriture, côté serveur, et le test
+`server/registre.test.mjs` les couvre :
+
+- un analyste ne peut ni modifier, ni supprimer le dossier d'un autre ;
+- un analyste ne peut pas valider un dossier, même le sien ;
+- la hiérarchie valide et réattribue, mais ne modifie pas le fond ;
+- le profil lecture n'écrit rien ;
+- seul l'administrateur importe ou réinitialise le registre ;
+- deux agents modifiant le même dossier ne s'écrasent pas : la seconde écriture
+  est refusée avec une invitation à recharger.
+
+Les mots de passe ne sont pas stockés en clair : seul un condensat scrypt est
+conservé, et la session tient dans un cookie signé, `HttpOnly` et `SameSite`.
+
+> **Avant tout usage réel.** Les comptes de démonstration sont créés au
+> démarrage dans `server/comptes.mjs`. Les remplacer par l'annuaire de la Banque
+> (LDAP, Active Directory) : le reste du service n'en dépend pas, il lui suffit
+> d'un objet `{ username, role }`.
+
 ## Profils
 
 | Compte      | Mot de passe  | Droits                                                                 |

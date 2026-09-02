@@ -25,6 +25,25 @@ import {
 import { can } from "../lib/permissions";
 import { correspond } from "../lib/filtres";
 import { Empty, estClos, fmtMontant, Modal, NiveauBadge, StatutBadge } from "../components/ui";
+import { rafraichirRegistre } from "../lib/dossiers";
+
+/**
+ * Exécute une écriture et rend le message du serveur en cas de refus.
+ * Les permissions étant vérifiées côté service, un bouton peut être cliquable
+ * et l'écriture néanmoins refusée : il faut le dire à l'agent.
+ */
+async function ecrire(action: () => Promise<void>, signaler: (m: string) => void): Promise<boolean> {
+  try {
+    await action();
+    return true;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Écriture refusée.";
+    signaler(msg);
+    /* Conflit de version : l'agent doit repartir de l'état courant. */
+    if (/modifié par un autre agent/.test(msg)) await rafraichirRegistre().catch(() => {});
+    return false;
+  }
+}
 
 const ANALYSTES = DEMO_ACCOUNTS.filter((a) => a.role === "analyste" || a.role === "hierarchie" || a.role === "admin");
 
@@ -53,6 +72,7 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
     },
   );
   const [erreurs, setErreurs] = useState<string[]>([]);
+  const [envoi, setEnvoi] = useState(false);
   const calc = calculerDelai(f.dateReception, f.delaiReglementaire);
   const set = <K extends keyof Dossier>(k: K, v: Dossier[K]) => setF((x) => ({ ...x, [k]: v }));
 
@@ -65,8 +85,9 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
     }));
   }
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
+    if (envoi) return;
     const errs: string[] = [];
     if (!f.reference.trim()) errs.push("La référence est obligatoire.");
     if (!f.demandeur.trim()) errs.push("Le demandeur est obligatoire.");
@@ -83,8 +104,10 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
       user.username,
       initial ? "Modification du dossier" : "Enregistrement du dossier au registre",
     );
-    upsertDossier(d);
-    onClose();
+    setEnvoi(true);
+    const ok = await ecrire(() => upsertDossier(d), (m) => setErreurs([m]));
+    setEnvoi(false);
+    if (ok) onClose();
   }
 
   return (
@@ -208,8 +231,8 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
           <button type="button" className="btn-ghost" onClick={onClose}>
             Annuler
           </button>
-          <button type="submit" className="btn-ghost bg-ink text-white">
-            Enregistrer
+          <button type="submit" className="btn-ghost bg-ink text-white" disabled={envoi}>
+            {envoi ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
       </form>
@@ -221,7 +244,7 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
 /* Fiche dossier + actions                                              */
 /* ------------------------------------------------------------------ */
 
-function Fiche({ d, onClose, onEdit }: { d: Dossier; onClose: () => void; onEdit: () => void }) {
+function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => void; onEdit: () => void; signaler: (m: string) => void }) {
   const user = useUser();
   const navigate = useNavigate();
   const c = calculerDelai(d.dateReception, d.delaiReglementaire);
@@ -229,7 +252,8 @@ function Fiche({ d, onClose, onEdit }: { d: Dossier; onClose: () => void; onEdit
   const [confirmSuppr, setConfirmSuppr] = useState(false);
   const clos = estClos(d.statut);
 
-  const decider = (statut: Statut, action: string) => upsertDossier(withEvent({ ...d, statut }, user.username, action));
+  const decider = (statut: Statut, action: string) =>
+    void ecrire(() => upsertDossier(withEvent({ ...d, statut }, user.username, action)), signaler);
 
   return (
     <Modal title={d.reference} onClose={onClose} wide>
@@ -328,7 +352,15 @@ function Fiche({ d, onClose, onEdit }: { d: Dossier; onClose: () => void; onEdit
                   type="button"
                   className="btn-sm shrink-0"
                   disabled={(reassign || null) === d.analyste}
-                  onClick={() => upsertDossier(withEvent({ ...d, analyste: reassign || null }, user.username, reassign ? `Réattribution à ${reassign}` : "Retrait de l'attribution"))}
+                  onClick={() =>
+                    void ecrire(
+                      () =>
+                        upsertDossier(
+                          withEvent({ ...d, analyste: reassign || null }, user.username, reassign ? `Réattribution à ${reassign}` : "Retrait de l'attribution"),
+                        ),
+                      signaler,
+                    )
+                  }
                 >
                   OK
                 </button>
@@ -344,10 +376,7 @@ function Fiche({ d, onClose, onEdit }: { d: Dossier; onClose: () => void; onEdit
                     <button
                       type="button"
                       className="btn-sm bg-rouge text-white border-rouge"
-                      onClick={() => {
-                        removeDossier(d.id);
-                        onClose();
-                      }}
+                      onClick={() => void ecrire(() => removeDossier(d.id), signaler).then((ok) => ok && onClose())}
                     >
                       Confirmer
                     </button>
@@ -373,7 +402,7 @@ function Fiche({ d, onClose, onEdit }: { d: Dossier; onClose: () => void; onEdit
 /* Import tableur                                                        */
 /* ------------------------------------------------------------------ */
 
-function ImportModal({ onClose }: { onClose: () => void }) {
+function ImportModal({ onClose, signaler }: { onClose: () => void; signaler: (m: string) => void }) {
   const [texte, setTexte] = useState("");
   const [resultat, setResultat] = useState<ReturnType<typeof fromCSV> | null>(null);
   const [mode, setMode] = useState<"ajouter" | "remplacer">("ajouter");
@@ -385,7 +414,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     setResultat(null);
   }
 
-  function appliquer() {
+  async function appliquer() {
     if (!resultat) return;
     /* Le remplacement efface tout le registre, historiques compris : on le
        fait confirmer, comme la réinitialisation. */
@@ -398,8 +427,7 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     )
       return;
     const next = mode === "remplacer" ? resultat.dossiers : [...resultat.dossiers, ...existants];
-    replaceAll(next);
-    onClose();
+    if (await ecrire(() => replaceAll(next), signaler)) onClose();
   }
 
   return (
@@ -465,6 +493,8 @@ export default function Registre() {
   const [params, setParams] = useSearchParams();
   const [formulaire, setFormulaire] = useState<{ open: boolean; dossier: Dossier | null }>({ open: false, dossier: null });
   const [importOpen, setImportOpen] = useState(false);
+  const [refus, setRefus] = useState<string | null>(null);
+  const signaler = (m: string) => setRefus(m);
 
   const q = params.get("q") ?? "";
   const statut = params.get("statut") ?? "";
@@ -508,7 +538,10 @@ export default function Registre() {
               <button
                 type="button"
                 className="btn-ghost"
-                onClick={() => window.confirm("Réinitialiser le registre avec les données de démonstration ?") && resetToSeed()}
+                onClick={() =>
+                  window.confirm("Réinitialiser le registre avec les données de démonstration ?") &&
+                  void ecrire(() => resetToSeed(), signaler)
+                }
               >
                 Réinitialiser
               </button>
@@ -521,6 +554,15 @@ export default function Registre() {
           )}
         </div>
       </div>
+
+      {refus && (
+        <div role="alert" className="card border-l-[5px] border-l-rouge p-3 flex items-start justify-between gap-4">
+          <p className="text-sm font-semibold text-rouge">{refus}</p>
+          <button type="button" className="btn-sm shrink-0" onClick={() => setRefus(null)}>
+            Fermer
+          </button>
+        </div>
+      )}
 
       <div className="card p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <input className="field" placeholder="Rechercher (référence, demandeur, type)…" value={q} onChange={(e) => setParam("q", e.target.value)} aria-label="Recherche" />
@@ -617,7 +659,7 @@ export default function Registre() {
       </div>
 
       {selection && !formulaire.open && (
-        <Fiche d={selection} onClose={() => navigate("/registre")} onEdit={() => setFormulaire({ open: true, dossier: selection })} />
+        <Fiche d={selection} onClose={() => navigate("/registre")} onEdit={() => setFormulaire({ open: true, dossier: selection })} signaler={signaler} />
       )}
       {id && !selection && (
         <Modal title="Dossier introuvable" onClose={() => navigate("/registre")}>
@@ -625,7 +667,7 @@ export default function Registre() {
         </Modal>
       )}
       {formulaire.open && <DossierForm initial={formulaire.dossier} onClose={() => setFormulaire({ open: false, dossier: null })} />}
-      {importOpen && <ImportModal onClose={() => setImportOpen(false)} />}
+      {importOpen && <ImportModal onClose={() => setImportOpen(false)} signaler={signaler} />}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../App";
-import { authenticate, DEMO_ACCOUNTS } from "../lib/auth";
+import { DEMO_ACCOUNTS, seConnecter } from "../lib/auth";
 import { formatEdition, formatLongDateFR } from "../lib/dates";
 
 export default function Login() {
@@ -12,16 +12,26 @@ export default function Login() {
   const [erreur, setErreur] = useState<string | null>(null);
   const today = new Date();
 
-  function onSubmit(e: FormEvent) {
+  const [enCours, setEnCours] = useState(false);
+
+  async function onSubmit(e: FormEvent) {
     e.preventDefault();
-    const user = authenticate(identifiant, motDePasse);
-    if (!user) {
-      setErreur("Identifiant ou mot de passe incorrect.");
-      return;
+    if (enCours) return;
+    setEnCours(true);
+    try {
+      const user = await seConnecter(identifiant, motDePasse);
+      if (!user) {
+        setErreur("Identifiant ou mot de passe incorrect.");
+        return;
+      }
+      setErreur(null);
+      login(user);
+      navigate("/", { replace: true });
+    } catch {
+      setErreur("Le service est injoignable. Réessayez dans un instant.");
+    } finally {
+      setEnCours(false);
     }
-    setErreur(null);
-    login(user);
-    navigate("/", { replace: true });
   }
 
   return (
@@ -97,8 +107,8 @@ export default function Login() {
                 {erreur}
               </p>
             )}
-            <button type="submit" className="btn-primary">
-              Entrer dans le registre
+            <button type="submit" className="btn-primary" disabled={enCours}>
+              {enCours ? "Vérification…" : "Entrer dans le registre"}
             </button>
           </form>
 

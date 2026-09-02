@@ -1,5 +1,6 @@
-import { useSyncExternalStore } from "react";
-import { addDays, toISODate } from "./dates";
+import { useEffect, useSyncExternalStore } from "react";
+import * as MODELE from "../../shared/dossiers-modele.mjs";
+import { api, detecterMode, type Mode } from "./api";
 
 export type TypeDossier =
   | "transfert"
@@ -24,6 +25,8 @@ export interface Evenement {
 
 export interface Dossier {
   id: string;
+  /** Numéro de révision, tenu par le serveur : détecte les écritures concurrentes. */
+  version?: number;
   reference: string;
   demandeur: string;
   type: TypeDossier;
@@ -41,179 +44,133 @@ export interface Dossier {
   historique: Evenement[];
 }
 
-export const TYPE_LABELS: Record<TypeDossier, string> = {
-  transfert: "Transfert de fonds",
-  investissement: "Investissement direct étranger",
-  emprunt: "Emprunt extérieur",
-  compte_devises: "Ouverture de compte en devises",
-  rapatriement: "Rapatriement de recettes d'exportation",
-  autre: "Autre demande",
-};
+export const TYPE_LABELS: Record<TypeDossier, string> = MODELE.TYPE_LABELS;
+export const STATUT_LABELS: Record<Statut, string> = MODELE.STATUT_LABELS;
+export const DELAI_PAR_TYPE: Record<TypeDossier, number> = MODELE.DELAI_PAR_TYPE;
 
-export const STATUT_LABELS: Record<Statut, string> = {
-  en_instruction: "En instruction",
-  en_attente_pieces: "En attente de pièces",
-  valide: "Validé",
-  rejete: "Rejeté",
-};
+export const piecesRequises = MODELE.piecesRequises as (type: TypeDossier) => Piece[];
+export const newId = MODELE.newId as () => string;
 
-export const DELAI_PAR_TYPE: Record<TypeDossier, number> = {
-  transfert: 30,
-  investissement: 45,
-  emprunt: 60,
-  compte_devises: 30,
-  rapatriement: 30,
-  autre: 30,
-};
-
-const PIECES_PAR_TYPE: Record<TypeDossier, string[]> = {
-  transfert: ["Formulaire de demande", "Facture / contrat", "Justificatif d'origine des fonds", "Attestation fiscale"],
-  investissement: ["Formulaire de déclaration", "Statuts de la société", "Plan de financement", "Attestation bancaire"],
-  emprunt: ["Convention de prêt", "Tableau d'amortissement", "Autorisation du conseil", "Attestation fiscale"],
-  compte_devises: ["Formulaire de demande", "Registre de commerce", "Justificatif d'activité", "Attestation bancaire"],
-  rapatriement: ["Déclaration d'exportation", "Facture définitive", "Attestation de domiciliation", "Relevé bancaire"],
-  autre: ["Formulaire de demande", "Pièce justificative"],
-};
-
-export function piecesRequises(type: TypeDossier): Piece[] {
-  return PIECES_PAR_TYPE[type].map((label) => ({ label, fourni: false }));
-}
-
-export function newId(): string {
-  return typeof crypto !== "undefined" && "randomUUID" in crypto
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-}
 
 /* ------------------------------------------------------------------ */
-/* Données initiales                                                    */
-/* ------------------------------------------------------------------ */
-
-function seed(): Dossier[] {
-  const today = toISODate(new Date());
-  const now = new Date().toISOString();
-  const recu = (days: number) => addDays(today, -days);
-  const ev = (auteur: string, action: string, daysAgo: number): Evenement => ({
-    date: new Date(Date.now() - daysAgo * 86_400_000).toISOString(),
-    auteur,
-    action,
-  });
-  const mk = (
-    n: number,
-    demandeur: string,
-    type: TypeDossier,
-    montant: number,
-    devise: string,
-    joursDepuisReception: number,
-    analyste: string | null,
-    statut: Statut,
-    fournies: number,
-  ): Dossier => {
-    const pieces = piecesRequises(type).map((p, i) => ({ ...p, fourni: i < fournies }));
-    return {
-      id: newId(),
-      reference: `DRC/SA/2026/${String(n).padStart(4, "0")}`,
-      demandeur,
-      type,
-      montant,
-      devise,
-      dateReception: recu(joursDepuisReception),
-      delaiReglementaire: DELAI_PAR_TYPE[type],
-      analyste,
-      statut,
-      pieces,
-      observations: "",
-      historique: [
-        ev("admin", "Enregistrement du dossier au registre", joursDepuisReception),
-        ...(analyste ? [ev("admin", `Attribution à ${analyste}`, joursDepuisReception)] : []),
-      ],
-    };
-  };
-  const d = [
-    mk(41, "Ondimba Marie‑Claire", "transfert", 185_000_000, "XAF", 27, "analyste", "en_instruction", 4),
-    mk(42, "SOCAGI SA", "investissement", 2_400_000, "EUR", 19, "analyste", "en_instruction", 3),
-    mk(43, "Bekolo & Fils SARL", "emprunt", 950_000, "USD", 21, "hierarchie", "en_instruction", 4),
-    mk(44, "Nguema Ondo Pascal", "compte_devises", 0, "XAF", 14, "analyste", "en_attente_pieces", 2),
-    mk(45, "Cotonnière du Tchad", "rapatriement", 1_120_000_000, "XAF", 8, null, "en_instruction", 3),
-    mk(46, "Mbappé Ekani Justine", "transfert", 45_000_000, "XAF", 3, "analyste", "en_instruction", 1),
-    mk(47, "Petro‑Congo Services", "emprunt", 5_000_000, "USD", 64, "hierarchie", "en_instruction", 4),
-    mk(48, "Alliance Bâtiment SA", "transfert", 320_000_000, "XAF", 35, "analyste", "valide", 4),
-  ];
-  d[7].historique.push({ date: now, auteur: "hierarchie", action: "Validation du dossier" });
-  return d;
-}
-
-/* ------------------------------------------------------------------ */
-/* Store persistant (localStorage) + abonnement React                   */
+/* Store : registre du serveur, ou du navigateur à défaut               */
 /* ------------------------------------------------------------------ */
 
 const STORAGE_KEY = "beac-drc:dossiers:v1";
-let dossiers: Dossier[] | null = null;
+const RAFRAICHIR_MS = 15_000;
+
+let dossiers: Dossier[] = [];
+let mode: Mode = "local";
 const listeners = new Set<() => void>();
 
-function read(): Dossier[] {
-  if (dossiers) return dossiers;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        dossiers = parsed as Dossier[];
-        return dossiers;
-      }
-    }
-  } catch {
-    /* stockage corrompu ou indisponible : on repart des données initiales */
-  }
-  dossiers = seed();
-  persist();
-  return dossiers;
+function notifier() {
+  listeners.forEach((l) => l());
 }
 
-function persist() {
+function persistLocal() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(dossiers ?? []));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dossiers));
   } catch {
     /* quota ou stockage indisponible : l'état reste en mémoire */
   }
 }
 
-function commit(next: Dossier[]) {
+function lireLocal(): Dossier[] {
+  try {
+    const brut = localStorage.getItem(STORAGE_KEY);
+    if (brut) {
+      const lu = JSON.parse(brut);
+      if (Array.isArray(lu)) return lu as Dossier[];
+    }
+  } catch {
+    /* stockage corrompu : on repart des données initiales */
+  }
+  return MODELE.donneesInitiales() as Dossier[];
+}
+
+function poser(next: Dossier[]) {
   dossiers = next;
-  persist();
-  listeners.forEach((l) => l());
+  if (mode === "local") persistLocal();
+  notifier();
+}
+
+let initialise: Promise<void> | null = null;
+
+/**
+ * Charge le registre : depuis le service s'il existe, sinon depuis le navigateur.
+ * `connecte` évite d'appeler le registre avant qu'une session soit ouverte.
+ */
+export function initialiserRegistre(connecte: boolean): Promise<void> {
+  if (!initialise) {
+    initialise = detecterMode().then(async (m) => {
+      mode = m;
+      if (m === "local") return poser(lireLocal());
+      if (!connecte) return poser([]);
+      poser(await api.lister().catch(() => []));
+    });
+  }
+  return initialise;
+}
+
+/** Relit le registre du serveur. Sans effet en mode local. */
+export async function rafraichirRegistre(): Promise<void> {
+  if (mode !== "serveur") return;
+  poser(await api.lister());
+}
+
+export function modeRegistre(): Mode {
+  return mode;
 }
 
 function subscribe(l: () => void) {
   listeners.add(l);
   return () => listeners.delete(l);
 }
+const snapshot = () => dossiers;
 
 export function useDossiers(): Dossier[] {
-  return useSyncExternalStore(subscribe, read, read);
+  const liste = useSyncExternalStore(subscribe, snapshot, snapshot);
+  /* En registre partagé, les dossiers changent sous les yeux de l'agent :
+     on relit périodiquement, et au retour sur l'onglet. */
+  useEffect(() => {
+    if (mode !== "serveur") return;
+    const relire = () => void rafraichirRegistre().catch(() => {});
+    const minuteur = setInterval(relire, RAFRAICHIR_MS);
+    window.addEventListener("focus", relire);
+    return () => {
+      clearInterval(minuteur);
+      window.removeEventListener("focus", relire);
+    };
+  }, []);
+  return liste;
 }
 
 export function getDossiers(): Dossier[] {
-  return read();
+  return dossiers;
 }
 
-export function upsertDossier(d: Dossier) {
-  const list = read();
-  const idx = list.findIndex((x) => x.id === d.id);
-  const next = idx === -1 ? [d, ...list] : list.map((x) => (x.id === d.id ? d : x));
-  commit(next);
+export async function upsertDossier(d: Dossier): Promise<void> {
+  if (mode === "serveur") {
+    const enregistre = await api.enregistrer(d);
+    const i = dossiers.findIndex((x) => x.id === enregistre.id);
+    poser(i === -1 ? [enregistre, ...dossiers] : dossiers.map((x) => (x.id === enregistre.id ? enregistre : x)));
+    return;
+  }
+  const i = dossiers.findIndex((x) => x.id === d.id);
+  poser(i === -1 ? [d, ...dossiers] : dossiers.map((x) => (x.id === d.id ? d : x)));
 }
 
-export function removeDossier(id: string) {
-  commit(read().filter((d) => d.id !== id));
+export async function removeDossier(id: string): Promise<void> {
+  if (mode === "serveur") await api.supprimer(id);
+  poser(dossiers.filter((d) => d.id !== id));
 }
 
-export function replaceAll(list: Dossier[]) {
-  commit(list);
+export async function replaceAll(list: Dossier[]): Promise<void> {
+  poser(mode === "serveur" ? await api.importer(list) : list);
 }
 
-export function resetToSeed() {
-  commit(seed());
+export async function resetToSeed(): Promise<void> {
+  poser(mode === "serveur" ? await api.reinitialiser() : (MODELE.donneesInitiales() as Dossier[]));
 }
 
 export function withEvent(d: Dossier, auteur: string, action: string): Dossier {
@@ -222,7 +179,7 @@ export function withEvent(d: Dossier, auteur: string, action: string): Dossier {
 
 export function nextReference(): string {
   const year = new Date().getFullYear();
-  const nums = read()
+  const nums = dossiers
     .map((d) => d.reference.match(/(\d{4})$/)?.[1])
     .filter(Boolean)
     .map(Number);

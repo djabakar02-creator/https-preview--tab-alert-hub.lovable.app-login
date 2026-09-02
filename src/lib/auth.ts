@@ -1,3 +1,5 @@
+import { api, detecterMode, ErreurApi } from "./api";
+
 export type Role = "admin" | "hierarchie" | "analyste" | "lecture";
 
 export interface User {
@@ -29,6 +31,38 @@ export const ROLE_LABELS: Record<Role, string> = {
 };
 
 const SESSION_KEY = "beac-drc:session:v1";
+
+/**
+ * Authentification. En présence d'un service, la vérification se fait côté
+ * serveur et le navigateur ne reçoit qu'un cookie de session : les mots de passe
+ * ci-dessus ne servent alors qu'à la démonstration hors ligne.
+ */
+export async function seConnecter(username: string, motDePasse: string): Promise<User | null> {
+  if ((await detecterMode()) === "serveur") {
+    try {
+      return await api.seConnecter(username, motDePasse);
+    } catch (e) {
+      if (e instanceof ErreurApi && e.statut === 401) return null;
+      throw e;
+    }
+  }
+  return authenticate(username, motDePasse);
+}
+
+/** Ferme la session côté serveur le cas échéant. */
+export async function seDeconnecter(): Promise<void> {
+  if ((await detecterMode()) === "serveur") await api.seDeconnecter().catch(() => {});
+  saveSession(null);
+}
+
+/** Session déjà ouverte : cookie du serveur, ou session locale. */
+export async function sessionCourante(): Promise<User | null> {
+  if ((await detecterMode()) === "serveur") {
+    /* 401 attendu tant que personne n'est connecté : ce n'est pas une panne. */
+    return api.session().catch(() => null);
+  }
+  return loadSession();
+}
 
 export function authenticate(username: string, password: string): User | null {
   const account = DEMO_ACCOUNTS.find(

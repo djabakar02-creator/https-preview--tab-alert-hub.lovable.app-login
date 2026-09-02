@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { loadSession, saveSession, type User } from "./lib/auth";
+import { saveSession, seDeconnecter, sessionCourante, type User } from "./lib/auth";
+import { initialiserRegistre, rafraichirRegistre } from "./lib/dossiers";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
@@ -37,16 +38,42 @@ function RequireAuth({ children }: { children: JSX.Element }) {
 }
 
 export default function App() {
-  const [user, setUser] = useState<User | null>(() => loadSession());
+  const [user, setUser] = useState<User | null>(null);
+  const [pret, setPret] = useState(false);
+
+  /* Une session peut déjà être ouverte : cookie du serveur, ou session locale. */
+  useEffect(() => {
+    let vivant = true;
+    void (async () => {
+      const u = await sessionCourante().catch(() => null);
+      await initialiserRegistre(Boolean(u)).catch(() => {});
+      if (!vivant) return;
+      setUser(u);
+      setPret(true);
+    })();
+    return () => {
+      vivant = false;
+    };
+  }, []);
+
   const login = useCallback((u: User) => {
     saveSession(u);
     setUser(u);
+    void rafraichirRegistre().catch(() => {});
   }, []);
   const logout = useCallback(() => {
-    saveSession(null);
+    void seDeconnecter();
     setUser(null);
   }, []);
   const value = useMemo(() => ({ user, login, logout }), [user, login, logout]);
+
+  if (!pret) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="label-caps opacity-60">Chargement du registre…</p>
+      </div>
+    );
+  }
 
   return (
     <Ctx.Provider value={value}>

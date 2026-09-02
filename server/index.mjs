@@ -19,8 +19,11 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import { randomBytes } from "node:crypto";
 import { SYSTEM_ORA } from "../shared/ora-persona.mjs";
+import { annuaireDemonstration, authentifier, cookieSession, lireCookie, signerSession, verifierSession } from "./comptes.mjs";
 import { construireRequete, ErreurRequete, lireReponse, messageErreur, validerCorps } from "./ora.mjs";
+import { creerRegistre } from "./registre.mjs";
 
 const DELAI_MS = 30_000;
 const FENETRE_MS = 60_000;
@@ -36,6 +39,12 @@ export function confDepuisEnvironnement(env = process.env) {
     port: Number(env.PORT) || 8787,
     origine: env.ORA_ORIGINE || "",
     racine: env.ORA_RACINE || resolve(process.cwd(), "dist"),
+    /* Registre partagé : un fichier, sur le serveur, commun à tous les agents. */
+    donnees: env.ORA_DONNEES || resolve(process.cwd(), "donnees", "registre.json"),
+    /* Secret de signature des sessions. Sans valeur fixe, les sessions ne
+       survivent pas à un redémarrage : à définir en production. */
+    secret: env.ORA_SECRET || "",
+    securise: env.ORA_COOKIE_SECURISE === "1",
   };
 }
 
@@ -91,6 +100,10 @@ export function creerServeur(conf = {}) {
   const CONF = { ...confDepuisEnvironnement(), ...conf };
   const RACINE = resolve(CONF.racine);
   const compteurs = new Map();
+  const annuaire = conf.annuaire ?? annuaireDemonstration();
+  const registre = creerRegistre(CONF.donnees);
+  const SECRET = CONF.secret || randomBytes(32).toString("hex");
+  if (!CONF.secret) console.warn("[ora] ORA_SECRET non défini : les sessions ouvertes seront perdues au redémarrage.");
 
   function tropDeRequetes(ip) {
     const maintenant = Date.now();
@@ -125,7 +138,66 @@ export function creerServeur(conf = {}) {
     createReadStream(fichier).pipe(res);
   }
 
+  /** Utilisateur porté par le cookie, ou null. */
+  function utilisateurDe(req) {
+    return verifierSession(SECRET, lireCookie(req.headers.cookie, "ora_session"));
+  }
+
+  /** Exige une session ouverte ; lève sinon. */
+  function exiger(req) {
+    const u = utilisateurDe(req);
+    if (!u) throw new ErreurRequete("Session expirée ou absente. Reconnectez-vous.", 401);
+    return u;
+  }
+
+  async function traiterSession(req, res, methode) {
+    if (methode === "GET") {
+      /* Interroger l'état de la session n'est pas un accès protégé : on répond
+         toujours 200, sans quoi chaque ouverture de page laisserait un 401 dans
+         la console du navigateur. */
+      const u = utilisateurDe(req);
+      return repondre(res, 200, u ? { ...u, connecte: true } : { connecte: false });
+    }
+    if (methode === "DELETE") {
+      return repondre(res, 200, { fin: true }, { "Set-Cookie": cookieSession("", CONF.securise) });
+    }
+    if (methode !== "POST") return repondre(res, 405, { erreur: "Méthode non autorisée." }, { Allow: "GET, POST, DELETE" });
+
+    const ip = req.socket.remoteAddress ?? "inconnue";
+    if (tropDeRequetes(`login:${ip}`)) return repondre(res, 429, { erreur: "Trop de tentatives. Patientez une minute." });
+
+    const { username, motDePasse } = await lireCorps(req);
+    const u = authentifier(annuaire, username, motDePasse);
+    if (!u) return repondre(res, 401, { erreur: "Identifiant ou mot de passe incorrect." });
+    return repondre(res, 200, u, { "Set-Cookie": cookieSession(signerSession(SECRET, u), CONF.securise) });
+  }
+
+  async function traiterDossiers(req, res, chemin, methode) {
+    const u = exiger(req);
+    const id = chemin.startsWith("/api/dossiers/") ? decodeURIComponent(chemin.slice("/api/dossiers/".length)) : null;
+
+    if (methode === "GET" && !id) return repondre(res, 200, { dossiers: registre.lister() });
+    if (methode === "PUT" && id) {
+      const corps = await lireCorps(req);
+      if (corps?.id !== id) throw new ErreurRequete("L'identifiant de l'adresse et celui du dossier diffèrent.");
+      return repondre(res, 200, registre.enregistrer(u, corps));
+    }
+    if (methode === "DELETE" && id) {
+      registre.supprimer(u, id);
+      return repondre(res, 200, { supprime: id });
+    }
+    if (methode === "POST" && chemin === "/api/dossiers/import") {
+      const { dossiers } = await lireCorps(req);
+      return repondre(res, 200, { dossiers: registre.remplacer(u, dossiers) });
+    }
+    if (methode === "POST" && chemin === "/api/dossiers/reinitialiser") {
+      return repondre(res, 200, { dossiers: registre.reinitialiser(u) });
+    }
+    return repondre(res, 405, { erreur: "Méthode non autorisée." });
+  }
+
   async function traiterOra(req, res) {
+    exiger(req);
     if (!CONF.cle) return repondre(res, 503, { erreur: "Le service n'est pas configuré : aucune clé n'est définie côté serveur." });
 
     const ip = req.socket.remoteAddress ?? "inconnue";
@@ -164,6 +236,10 @@ export function creerServeur(conf = {}) {
       }
       if (chemin === "/api/ora/etat") {
         return repondre(res, 200, { configure: Boolean(CONF.cle), fournisseur: CONF.fournisseur, modele: CONF.modele });
+      }
+      if (chemin === "/api/session") return await traiterSession(req, res, req.method);
+      if (chemin === "/api/dossiers" || chemin.startsWith("/api/dossiers/")) {
+        return await traiterDossiers(req, res, chemin, req.method);
       }
       if (chemin === "/api/ora") {
         if (req.method !== "POST") return repondre(res, 405, { erreur: "Méthode non autorisée." }, { Allow: "POST" });
