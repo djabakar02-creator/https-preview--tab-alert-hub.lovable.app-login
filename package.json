@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:single": "tsc -b && VITE_ROUTER=hash vite build && node scripts/single-file.mjs",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "test": "vitest run"

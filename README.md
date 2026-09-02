@@ -11,9 +11,13 @@ npm install
 npm run dev        # http://localhost:5173
 npm run build      # production dans dist/
 npm run preview    # sert dist/
+npm run build:single  # dist/beac-drc.html : l'application en un seul fichier (recette, hors ligne)
 npm test           # tests unitaires (délais, permissions, import CSV)
 npm run typecheck
 ```
+
+`build:single` compile avec un routage par ancre (`VITE_ROUTER=hash`) et embarque JS, CSS et polices
+dans un seul fichier HTML ouvrable sans serveur.
 
 Copier `.env.example` en `.env` et renseigner `VITE_GEMINI_API_KEY` pour brancher Ora
 sur Google AI Studio (Gemini). Sans clé, Ora fonctionne en mode local (analyse

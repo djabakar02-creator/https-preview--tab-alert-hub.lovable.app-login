@@ -1,13 +1,17 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
+import { BrowserRouter, HashRouter } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
+/* VITE_ROUTER=hash pour un hébergement statique sans réécriture d'URL
+   (fichier unique, GitHub Pages, partage de recette). */
+const Router = import.meta.env.VITE_ROUTER === "hash" ? HashRouter : BrowserRouter;
+
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <Router>
       <App />
-    </BrowserRouter>
+    </Router>
   </React.StrictMode>,
 );
