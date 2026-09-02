@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "service": "node server/index.mjs",
     "build": "tsc -b && vite build",
     "build:single": "tsc -b && VITE_ROUTER=hash vite build && node scripts/single-file.mjs",
     "build:demo": "tsc -b && VITE_ROUTER=hash VITE_SANS_CLE=1 vite build && node scripts/single-file.mjs",
@@ -18,6 +19,7 @@
     "react-router-dom": "^6.26.2"
   },
   "devDependencies": {
+    "@types/node": "^26.4.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",

@@ -15,6 +15,7 @@ import OraAvatar from "../components/OraAvatar";
 import { Section } from "../components/ui";
 
 const MOTEUR_LABELS: Record<Moteur, string> = {
+  service: "service BEAC",
   claude: "Claude",
   gemini: "Gemini",
   local: "analyse locale",

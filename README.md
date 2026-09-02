@@ -33,37 +33,55 @@ Deux garde-fous sont inscrits dans ses instructions :
 - elle n'invente **aucun** numéro d'article, seuil ou délai réglementaire ; si une
   disposition lui manque, elle le dit au lieu de la supposer.
 
-**Trois moteurs**, essayés dans cet ordre, avec bascule automatique :
+**Quatre moteurs**, essayés dans cet ordre, avec bascule automatique :
 
 | Moteur | Quand il sert | Configuration |
 | --- | --- | --- |
 | Claude | Page publiée déclarant la capacité `sample` | aucune |
-| Gemini | Application déployée ou lancée en local | clé embarquée dans `src/lib/ora.ts` |
-| Analyse locale | Réseau injoignable | aucune, toujours disponible |
+| Service BEAC | Déploiement normal : `server/index.mjs` détient la clé | `ORA_API_KEY` côté serveur |
+| Gemini direct | Développement seulement | `VITE_GEMINI_API_KEY` |
+| Analyse locale | Aucun moteur joignable | aucune, toujours disponible |
 
 Chaque appel réseau porte un délai de garde de 20 secondes : un moteur qui ne répond pas
 n'immobilise jamais la conversation. Sur saturation (HTTP 503/429), plusieurs modèles
 Gemini sont essayés avec nouvelle tentative.
 
-### Clé Gemini
+### Le service Ora : la clé ne quitte pas le serveur
 
-La clé Google AI Studio se place dans un fichier `.env` à la racine, jamais dans le code :
+Une application web sert son code au navigateur. Toute variable `VITE_*` finit donc
+lisible par n'importe quel visiteur, quelle que soit la restriction posée sur la clé.
+`server/index.mjs` répond à ce problème : il détient la clé, expose `POST /api/ora`,
+et le navigateur ne voit jamais que des questions et des réponses.
 
 ```bash
-cp .env.example .env
-# puis, dans .env :
-VITE_GEMINI_API_KEY=votre_clé_google_ai_studio
+cp .env.example .env      # renseigner ORA_API_KEY (sans préfixe VITE_)
+npm run build
+npm run service           # sert dist/ et /api/ora sur le port 8787
 ```
 
-Au déploiement, définir la même variable dans l'hébergeur (Lovable, Vercel, Netlify…).
-Vite l'incorpore au build, donc la clé finit lisible dans le JavaScript servi au
-navigateur : **restreindre la clé par référent HTTP** dans la console Google AI Studio,
-la limiter à la seule API Gemini, et la renouveler en cas de doute.
+En développement, lancer les deux : `npm run service` d'un côté, `npm run dev` de
+l'autre. Vite relaie `/api` vers le service.
 
-Ne pas l'écrire dans un fichier source : ce dépôt est public, et la protection contre
-les secrets de GitHub refuse un tel commit. Pour une application traitant des données
-réelles, l'appel à Gemini doit passer par un service serveur qui détient la clé, jamais
-par le navigateur.
+Ce que le service garantit, et que le test `server/ora.test.mjs` couvre :
+
+- la consigne système et le nom du modèle viennent du serveur — le navigateur ne peut
+  imposer ni l'un ni l'autre, et un tour de rôle `system` envoyé par le client est refusé ;
+- le corps d'erreur du fournisseur n'est jamais relayé, car il peut contenir la clé ;
+- la conversation est bornée en nombre de tours et en volume ;
+- vingt requêtes par minute et par adresse au maximum.
+
+### Changer de fournisseur
+
+`ORA_FOURNISSEUR=openai` avec `ORA_BASE_URL` suffit pour n'importe quelle API
+compatible OpenAI, sans toucher au code :
+
+| Fournisseur | `ORA_BASE_URL` | `ORA_MODELE` |
+| --- | --- | --- |
+| Google AI Studio | (laisser vide, `ORA_FOURNISSEUR=gemini`) | `gemini-flash-latest` |
+| Groq | `https://api.groq.com/openai/v1` | `llama-3.3-70b-versatile` |
+| Cerebras | `https://api.cerebras.ai/v1` | `gpt-oss-120b` |
+| Mistral | `https://api.mistral.ai/v1` | `mistral-large-latest` |
+| Ollama (local) | `http://localhost:11434/v1` | `llama3.1` |
 
 Sans clé, rien ne casse : Ora répond via Claude sur une page publiée, sinon via
 l'analyse locale déterministe.
