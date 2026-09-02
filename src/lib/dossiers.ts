@@ -244,7 +244,29 @@ const CSV_HEADERS = [
   "delaiReglementaire",
   "analyste",
   "statut",
+  "pieces",
+  "observations",
 ] as const;
+
+/** Les pièces tiennent dans une cellule : « intitulé:1|intitulé:0 ». */
+function encoderPieces(pieces: Piece[]): string {
+  return pieces.map((p) => `${p.label.replace(/[|:]/g, " ")}:${p.fourni ? 1 : 0}`).join("|");
+}
+
+function decoderPieces(valeur: string, type: TypeDossier): Piece[] {
+  const brut = valeur.trim();
+  if (!brut) return piecesRequises(type);
+  const pieces = brut
+    .split("|")
+    .map((part) => {
+      const i = part.lastIndexOf(":");
+      if (i === -1) return null;
+      const label = part.slice(0, i).trim();
+      return label ? { label, fourni: part.slice(i + 1).trim() === "1" } : null;
+    })
+    .filter((p): p is Piece => p !== null);
+  return pieces.length ? pieces : piecesRequises(type);
+}
 
 function csvEscape(v: unknown): string {
   const s = String(v ?? "");
@@ -252,7 +274,9 @@ function csvEscape(v: unknown): string {
 }
 
 export function toCSV(list: Dossier[]): string {
-  const rows = list.map((d) => CSV_HEADERS.map((h) => csvEscape(d[h])).join(";"));
+  const rows = list.map((d) =>
+    CSV_HEADERS.map((h) => csvEscape(h === "pieces" ? encoderPieces(d.pieces) : d[h])).join(";"),
+  );
   return [CSV_HEADERS.join(";"), ...rows].join("\n");
 }
 
@@ -320,8 +344,10 @@ export function fromCSV(text: string): ImportResult {
       delaiReglementaire: Number(get("delaiReglementaire")) || DELAI_PAR_TYPE[type],
       analyste: get("analyste") || null,
       statut,
-      pieces: piecesRequises(type),
-      observations: "",
+      /* Colonnes absentes d'un fichier tiers : on retombe sur les pièces
+         requises par le type, sans écraser silencieusement un état connu. */
+      pieces: decoderPieces(get("pieces"), type),
+      observations: get("observations"),
       historique: [{ date: new Date().toISOString(), auteur: "import", action: "Import tableur" }],
     });
   });

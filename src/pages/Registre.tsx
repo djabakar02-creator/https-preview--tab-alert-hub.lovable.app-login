@@ -387,6 +387,16 @@ function ImportModal({ onClose }: { onClose: () => void }) {
 
   function appliquer() {
     if (!resultat) return;
+    /* Le remplacement efface tout le registre, historiques compris : on le
+       fait confirmer, comme la réinitialisation. */
+    if (
+      mode === "remplacer" &&
+      existants.length > 0 &&
+      !window.confirm(
+        `Remplacer le registre supprimera définitivement les ${existants.length} dossier(s) existants et leur historique, au profit des ${resultat.dossiers.length} dossier(s) importés. Confirmer ?`,
+      )
+    )
+      return;
     const next = mode === "remplacer" ? resultat.dossiers : [...resultat.dossiers, ...existants];
     replaceAll(next);
     onClose();
@@ -396,8 +406,13 @@ function ImportModal({ onClose }: { onClose: () => void }) {
     <Modal title="Import tableur (CSV)" onClose={onClose} wide>
       <div className="space-y-4 text-sm">
         <p className="opacity-70">
-          Colonnes attendues (séparateur ; ou ,) : <code className="font-mono text-xs">reference;demandeur;type;montant;devise;dateReception;delaiReglementaire;analyste;statut</code>.
-          Exportez d'abord depuis l'onglet Rapports pour obtenir un modèle.
+          Colonnes attendues (séparateur ; ou ,) :{" "}
+          <code className="font-mono text-xs">
+            reference;demandeur;type;montant;devise;dateReception;delaiReglementaire;analyste;statut;pieces;observations
+          </code>
+          . Seules <code className="font-mono text-xs">reference</code>, <code className="font-mono text-xs">demandeur</code>,{" "}
+          <code className="font-mono text-xs">type</code> et <code className="font-mono text-xs">dateReception</code> sont obligatoires.
+          Exportez d'abord depuis l'onglet Rapports pour obtenir un modèle : l'aller‑retour conserve alors les pièces et les observations.
         </p>
         <div className="flex flex-wrap gap-2 items-center">
           <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => e.target.files?.[0] && lireFichier(e.target.files[0])} />
@@ -408,7 +423,8 @@ function ImportModal({ onClose }: { onClose: () => void }) {
             <input type="radio" checked={mode === "ajouter"} onChange={() => setMode("ajouter")} /> Ajouter au registre
           </label>
           <label className="flex items-center gap-1">
-            <input type="radio" checked={mode === "remplacer"} onChange={() => setMode("remplacer")} /> Remplacer le registre
+            <input type="radio" checked={mode === "remplacer"} onChange={() => setMode("remplacer")} />
+            <span className={mode === "remplacer" ? "text-rouge font-semibold" : ""}>Remplacer le registre</span>
           </label>
         </div>
         <textarea className="field font-mono text-xs" rows={8} value={texte} onChange={(e) => { setTexte(e.target.value); setResultat(null); }} placeholder="…ou collez le contenu CSV ici" />
