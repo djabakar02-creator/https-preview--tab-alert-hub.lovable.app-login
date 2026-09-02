@@ -12,6 +12,7 @@ npm run dev        # http://localhost:5173
 npm run build      # production dans dist/
 npm run preview    # sert dist/
 npm run build:single  # dist/beac-drc.html : l'application en un seul fichier (recette, hors ligne)
+npm run build:demo    # idem, sans la clé Gemini embarquée (hébergement tiers)
 npm test           # tests unitaires (délais, permissions, import CSV)
 npm run typecheck
 ```
@@ -19,10 +20,53 @@ npm run typecheck
 `build:single` compile avec un routage par ancre (`VITE_ROUTER=hash`) et embarque JS, CSS et polices
 dans un seul fichier HTML ouvrable sans serveur.
 
-Copier `.env.example` en `.env` et renseigner `VITE_GEMINI_API_KEY` pour brancher Ora
-sur Google AI Studio (Gemini). Sans clé, Ora fonctionne en mode local (analyse
-déterministe du dossier). En cas de saturation (HTTP 503/429), plusieurs modèles sont
-essayés avec nouvelle tentative, puis repli local.
+## Ora, assistante d'instruction
+
+Ora est le volet conversationnel de l'application. Sa persona, ses compétences et ses
+règles de conduite sont définies dans `src/lib/ora.ts` : cadre CEMAC (Règlement
+n° 02/18/CEMAC/UMAC/CM), qualification des demandes, contrôle de complétude, suivi des
+délais, aide à la décision.
+
+Deux garde-fous sont inscrits dans ses instructions :
+
+- elle reprend le délai restant **calculé par le registre** et ne le recalcule jamais ;
+- elle n'invente **aucun** numéro d'article, seuil ou délai réglementaire ; si une
+  disposition lui manque, elle le dit au lieu de la supposer.
+
+**Trois moteurs**, essayés dans cet ordre, avec bascule automatique :
+
+| Moteur | Quand il sert | Configuration |
+| --- | --- | --- |
+| Claude | Page publiée déclarant la capacité `sample` | aucune |
+| Gemini | Application déployée ou lancée en local | clé embarquée dans `src/lib/ora.ts` |
+| Analyse locale | Réseau injoignable | aucune, toujours disponible |
+
+Chaque appel réseau porte un délai de garde de 20 secondes : un moteur qui ne répond pas
+n'immobilise jamais la conversation. Sur saturation (HTTP 503/429), plusieurs modèles
+Gemini sont essayés avec nouvelle tentative.
+
+### Clé Gemini
+
+La clé Google AI Studio se place dans un fichier `.env` à la racine, jamais dans le code :
+
+```bash
+cp .env.example .env
+# puis, dans .env :
+VITE_GEMINI_API_KEY=votre_clé_google_ai_studio
+```
+
+Au déploiement, définir la même variable dans l'hébergeur (Lovable, Vercel, Netlify…).
+Vite l'incorpore au build, donc la clé finit lisible dans le JavaScript servi au
+navigateur : **restreindre la clé par référent HTTP** dans la console Google AI Studio,
+la limiter à la seule API Gemini, et la renouveler en cas de doute.
+
+Ne pas l'écrire dans un fichier source : ce dépôt est public, et la protection contre
+les secrets de GitHub refuse un tel commit. Pour une application traitant des données
+réelles, l'appel à Gemini doit passer par un service serveur qui détient la clé, jamais
+par le navigateur.
+
+Sans clé, rien ne casse : Ora répond via Claude sur une page publiée, sinon via
+l'analyse locale déterministe.
 
 ## Profils
 

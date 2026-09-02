@@ -70,3 +70,19 @@ body {
 .field {
   @apply w-full bg-white border border-ink/40 px-3 py-2 text-sm outline-none focus:border-rouge;
 }
+
+/* Arc de l'avatar d'Ora : tourne pendant la réflexion. */
+.ora-actif .ora-arc {
+  transform-origin: 24px 26px;
+  animation: ora-tour 1.4s linear infinite;
+}
+@keyframes ora-tour {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ora-actif .ora-arc {
+    animation: none;
+  }
+}
