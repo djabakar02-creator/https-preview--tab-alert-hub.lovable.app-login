@@ -70,6 +70,51 @@ Ce que le service garantit, et que le test `server/ora.test.mjs` couvre :
 - la conversation est bornée en nombre de tours et en volume ;
 - vingt requêtes par minute et par adresse au maximum.
 
+## Application de bureau (Windows, macOS, Linux)
+
+L'application s'installe aussi comme un logiciel de poste, sans navigateur ni
+serveur à administrer. Le processus principal démarre le service Ora sur un port
+libre de la boucle locale, puis ouvre la fenêtre dessus.
+
+```bash
+npm run desktop           # lancer depuis les sources
+npm run dist:win          # Windows : installateur .exe + archive portable
+npm run dist:win-portable # Windows : archive portable seule
+npm run dist:linux        # AppImage
+npm run dist:mac          # dmg
+```
+
+L'installateur `.exe` repose sur NSIS, qui doit s'exécuter sous Windows : lancer
+`npm run dist:win` depuis un poste Windows, ou une machine de construction
+Windows. Depuis Linux ou macOS, `npm run dist:win-portable` produit une archive
+que l'on décompresse et lance directement, sans installation ni droits
+d'administrateur.
+
+Un installateur destiné à des postes d'une administration doit être **signé**.
+Sans signature, Windows SmartScreen affiche un avertissement à chaque
+installation. La signature demande un certificat d'éditeur, à demander au
+service informatique.
+
+### Configurer Ora sur le poste
+
+Menu **Fichier › Configurer Ora…** ouvre `ora.json`, dans le dossier de
+configuration de l'utilisateur. La clé y reste : elle n'est jamais transmise à
+la fenêtre.
+
+```json
+{ "fournisseur": "openai", "cle": "…", "modele": "llama3.1", "base": "http://localhost:11434/v1" }
+```
+
+Avec Ollama installé sur le poste, **aucune donnée ne sort de la machine**.
+
+> **Un registre par poste.** En application de bureau, les dossiers sont
+> enregistrés sur le poste, dans le profil de l'utilisateur. Deux agents
+> installant le logiciel travaillent sur deux registres distincts, sans rien
+> partager. C'est adapté à un usage individuel ou à une démonstration, mais pas
+> à un service dont plusieurs agents instruisent les mêmes dossiers : pour cela,
+> déployer le service sur une machine du réseau interne et y accéder par
+> navigateur.
+
 ### Changer de fournisseur
 
 `ORA_FOURNISSEUR=openai` avec `ORA_BASE_URL` suffit pour n'importe quelle API
