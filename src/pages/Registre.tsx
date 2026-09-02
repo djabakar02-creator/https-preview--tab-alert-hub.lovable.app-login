@@ -23,6 +23,7 @@ import {
   type TypeDossier,
 } from "../lib/dossiers";
 import { can } from "../lib/permissions";
+import { correspond } from "../lib/filtres";
 import { Empty, estClos, fmtMontant, Modal, NiveauBadge, StatutBadge } from "../components/ui";
 
 const ANALYSTES = DEMO_ACCOUNTS.filter((a) => a.role === "analyste" || a.role === "hierarchie" || a.role === "admin");
@@ -452,7 +453,10 @@ export default function Registre() {
   const q = params.get("q") ?? "";
   const statut = params.get("statut") ?? "";
   const niveau = params.get("niveau") ?? "";
-  const analyste = params.get("analyste") ?? (user.role === "analyste" ? "__mine" : "");
+  /* « __tous » est une valeur explicite, et non la chaîne vide : sans cela,
+     un analyste qui choisit « Tous les analystes » effacerait le paramètre et
+     retomberait aussitôt sur le défaut « Mes dossiers ». */
+  const analyste = params.get("analyste") ?? (user.role === "analyste" ? "__mine" : "__tous");
   const setParam = (k: string, v: string) => {
     const p = new URLSearchParams(params);
     if (v) p.set(k, v);
@@ -461,16 +465,9 @@ export default function Registre() {
   };
 
   const lignes = useMemo(() => {
-    const needle = q.trim().toLowerCase();
     return dossiers
       .map((d) => ({ d, c: calculerDelai(d.dateReception, d.delaiReglementaire) }))
-      .filter(({ d, c }) => {
-        if (needle && !`${d.reference} ${d.demandeur} ${TYPE_LABELS[d.type]}`.toLowerCase().includes(needle)) return false;
-        if (statut === "en_cours" ? !(d.statut === "en_instruction" || d.statut === "en_attente_pieces") : statut && d.statut !== statut) return false;
-        if (niveau && c.niveau !== niveau) return false;
-        if (analyste === "__none" ? d.analyste !== null : analyste === "__mine" ? d.analyste !== user.username : analyste && d.analyste !== analyste) return false;
-        return true;
-      })
+      .filter(({ d, c }) => correspond(d, c, { q, statut, niveau, analyste }, user.username))
       .sort((a, b) => a.c.delaiRestant - b.c.delaiRestant);
   }, [dossiers, q, statut, niveau, analyste, user.username]);
 
@@ -529,7 +526,7 @@ export default function Registre() {
           ))}
         </select>
         <select className="field" value={analyste} onChange={(e) => setParam("analyste", e.target.value)} aria-label="Analyste">
-          <option value="">Tous les analystes</option>
+          <option value="__tous">Tous les analystes</option>
           <option value="__mine">Mes dossiers</option>
           <option value="__none">Non attribués</option>
           {ANALYSTES.map((a) => (

@@ -12,15 +12,31 @@ export default function Dashboard() {
 
   const enCours = dossiers.filter((d) => d.statut === "en_instruction" || d.statut === "en_attente_pieces");
   const calc = enCours.map((d) => ({ d, c: calculerDelai(d.dateReception, d.delaiReglementaire) }));
+  /* Un analyste ne pilote que ses propres dossiers ; les autres profils voient tout. */
+  const mesEnCours = user.role === "analyste" ? calc.filter((x) => x.d.analyste === user.username) : calc;
+  /* Les indicateurs portent sur tout le service. Chaque lien force donc
+     « analyste=__tous », sinon un analyste verrait un registre restreint à ses
+     dossiers, en contradiction avec le nombre affiché sur la tuile. */
   const kpis = [
-    { label: "Dossiers au registre", value: dossiers.length, to: "/registre" },
-    { label: "En cours", value: enCours.length, to: "/registre?statut=en_cours" },
-    { label: "Urgents (≤ 3 j)", value: calc.filter((x) => x.c.niveau === "urgent").length, to: "/registre?niveau=urgent", rouge: true },
-    { label: "Délai dépassé", value: calc.filter((x) => x.c.niveau === "depasse").length, to: "/registre?niveau=depasse", rouge: true },
-    { label: "Non attribués", value: enCours.filter((d) => !d.analyste).length, to: "/registre?analyste=__none" },
+    { label: "Dossiers au registre", value: dossiers.length, to: "/registre?analyste=__tous" },
+    { label: "En cours", value: enCours.length, to: "/registre?analyste=__tous&statut=en_cours" },
+    {
+      label: "Urgents (≤ 3 j)",
+      value: calc.filter((x) => x.c.niveau === "urgent").length,
+      to: "/registre?analyste=__tous&niveau=urgent",
+      rouge: true,
+    },
+    {
+      label: "Délai dépassé",
+      value: calc.filter((x) => x.c.niveau === "depasse").length,
+      to: "/registre?analyste=__tous&niveau=depasse",
+      rouge: true,
+    },
+    ...(user.role === "analyste"
+      ? [{ label: "Mes dossiers en cours", value: mesEnCours.length, to: "/registre?analyste=__mine&statut=en_cours" }]
+      : [{ label: "Non attribués", value: enCours.filter((d) => !d.analyste).length, to: "/registre?analyste=__none" }]),
   ];
-  const mesDossiers = user.role === "analyste" ? calc.filter((x) => x.d.analyste === user.username) : calc;
-  const prioritaires = [...mesDossiers].sort((a, b) => a.c.delaiRestant - b.c.delaiRestant).slice(0, 5);
+  const prioritaires = [...mesEnCours].sort((a, b) => a.c.delaiRestant - b.c.delaiRestant).slice(0, 5);
 
   return (
     <div className="space-y-8">

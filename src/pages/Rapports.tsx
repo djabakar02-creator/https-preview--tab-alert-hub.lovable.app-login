@@ -4,6 +4,7 @@ import { formatClock } from "../lib/dates";
 import { calculerDelai, NIVEAU_LABELS, type Niveau } from "../lib/delais";
 import { STATUT_LABELS, TYPE_LABELS, toCSV, useDossiers, type Statut, type TypeDossier } from "../lib/dossiers";
 import { Section } from "../components/ui";
+import { telechargerFichier } from "../lib/telechargement";
 
 function Barre({ label, value, total, rouge }: { label: string; value: number; total: number; rouge?: boolean }) {
   const pct = total ? Math.round((value / total) * 100) : 0;
@@ -23,7 +24,7 @@ function Barre({ label, value, total, rouge }: { label: string; value: number; t
 export default function Rapports() {
   const dossiers = useDossiers();
   const [genereLe, setGenereLe] = useState(() => new Date());
-  const [copie, setCopie] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
 
   /* Le rapport est figé à la date de génération ; « Actualiser » le recalcule. */
   const rapport = useMemo(() => {
@@ -49,25 +50,27 @@ export default function Rapports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dossiers, genereLe]);
 
-  function telecharger() {
-    const csv = toCSV(dossiers);
-    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `registre-drc-${new Date().toISOString().slice(0, 10)}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+  async function telecharger() {
+    const nom = `registre-drc-${new Date().toISOString().slice(0, 10)}.csv`;
+    try {
+      /* Le BOM permet à Excel d'ouvrir le fichier en UTF-8. */
+      const canal = await telechargerFichier(nom, "﻿" + toCSV(dossiers));
+      if (canal === "refus") setMessage("Téléchargement annulé.");
+      else setMessage(`Registre exporté : ${nom}`);
+    } catch {
+      setMessage("Téléchargement impossible dans ce navigateur : utilisez « Copier CSV ».");
+    }
+    setTimeout(() => setMessage(null), 4000);
   }
 
   async function copier() {
     try {
       await navigator.clipboard.writeText(toCSV(dossiers));
-      setCopie("Copié dans le presse‑papiers.");
+      setMessage("Registre copié dans le presse‑papiers.");
     } catch {
-      setCopie("Copie impossible dans ce navigateur : utilisez le téléchargement.");
+      setMessage("Copie impossible dans ce navigateur : utilisez le téléchargement.");
     }
-    setTimeout(() => setCopie(null), 3000);
+    setTimeout(() => setMessage(null), 4000);
   }
 
   return (
@@ -92,7 +95,7 @@ export default function Rapports() {
           </button>
         </div>
       </div>
-      {copie && <p className="text-sm font-semibold">{copie}</p>}
+      {message && <p role="status" className="text-sm font-semibold">{message}</p>}
 
       <div className="grid md:grid-cols-3 gap-3">
         <div className="card p-4">
