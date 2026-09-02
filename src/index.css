@@ -1,0 +1,67 @@
+/* Polices embarquées (fonctionnement hors ligne / intranet). */
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/archivo-latin.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo Black";
+  font-style: normal;
+  font-weight: 100 900; /* couvre tous les poids : pas de gras synthétique */
+  font-display: swap;
+  src: url("/fonts/archivo-black-latin.woff2") format("woff2");
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  @apply bg-white text-ink font-sans antialiased;
+  margin: 0;
+}
+
+/* Si Archivo Black n'est pas disponible, la police de repli reste très grasse. */
+.font-display {
+  font-weight: 900;
+}
+
+.label-caps {
+  @apply text-[11px] font-bold uppercase tracking-[0.22em];
+}
+
+.input-line {
+  @apply w-full bg-transparent border-0 border-b-2 border-ink/80 px-0 py-2 text-base outline-none focus:border-rouge transition-colors;
+}
+
+.btn-primary {
+  @apply bg-rouge text-white label-caps py-4 px-6 w-full text-center hover:bg-[#c50d18] active:translate-y-px transition disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-ghost {
+  @apply border border-ink/80 label-caps px-4 py-2 hover:bg-ink hover:text-white transition disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink;
+}
+
+.btn-sm {
+  @apply text-[10px] font-bold uppercase tracking-[0.16em] px-2.5 py-1.5 border border-ink/70 hover:bg-ink hover:text-white transition disabled:opacity-35 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-ink;
+}
+
+.card {
+  @apply bg-paper border border-line;
+}
+
+.field {
+  @apply w-full bg-white border border-ink/40 px-3 py-2 text-sm outline-none focus:border-rouge;
+}
