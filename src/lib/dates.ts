@@ -61,3 +61,12 @@ export function formatDateTimeFR(iso: string): string {
   const d = new Date(iso);
   return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+
+/**
+ * Nombre à la française. `toLocaleString` groupe avec une espace fine
+ * insécable (U+202F), presque invisible à petite taille : sur des montants de
+ * banque centrale, on lui préfère l'espace insécable ordinaire.
+ */
+export function formatNombreFR(n: number): string {
+  return n.toLocaleString("fr-FR").replace(/\u202F/g, "\u00A0");
+}

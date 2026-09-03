@@ -1,7 +1,7 @@
 type SaveFn = (r: { filename: string; data: string | Blob }) => Promise<{ status: string }>;
 
 /**
- * Remet un fichier à l'utilisateur.
+ * Remet un fichier à l'utilisateur, texte ou binaire.
  *
  * Sur une page publiée en bac à sable, un lien `download` est inerte : le
  * téléchargement doit passer par la capacité `downloads`. Ailleurs, le lien
@@ -11,15 +11,17 @@ type SaveFn = (r: { filename: string; data: string | Blob }) => Promise<{ status
  */
 export async function telechargerFichier(
   nom: string,
-  contenu: string,
+  donnees: string | Blob,
   type = "text/csv;charset=utf-8",
 ): Promise<"capacite" | "lien" | "refus"> {
+  const blob = typeof donnees === "string" ? new Blob([donnees], { type }) : donnees;
+
   const use = typeof window !== "undefined" ? window.claude?.use : undefined;
   if (use) {
     try {
       const dl = (await use("downloads")) as { save?: SaveFn } | null;
       if (dl?.save) {
-        await dl.save({ filename: nom, data: contenu });
+        await dl.save({ filename: nom, data: blob });
         return "capacite";
       }
     } catch (e) {
@@ -29,7 +31,7 @@ export async function telechargerFichier(
     }
   }
 
-  const url = URL.createObjectURL(new Blob([contenu], { type }));
+  const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
   a.download = nom;

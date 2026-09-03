@@ -20,6 +20,33 @@ npm run typecheck
 `build:single` compile avec un routage par ancre (`VITE_ROUTER=hash`) et embarque JS, CSS et polices
 dans un seul fichier HTML ouvrable sans serveur.
 
+## Rapports et exports
+
+La synthèse couvre les niveaux de délai, les statuts, le détail par type
+d'opération, la charge par analyste, les montants par devise et les réceptions
+des douze derniers mois, avec délai moyen, médian, taux de respect des échéances
+et complétude des pièces.
+
+Le calcul vit dans `src/lib/rapport.ts`, sans état ni rendu : l'écran, le PDF et
+le classeur s'appuient tous les trois dessus, donc le document téléchargé dit
+exactement ce que l'écran affiche.
+
+| Format | Contenu |
+| --- | --- |
+| **PDF** | Synthèse mise en page à l'identité du registre, puis le registre détaillé. Ligne hors délai en rouge, pied de page numéroté, aucun tableau coupé entre deux pages. |
+| **XLSX** | Deux feuilles : *Synthèse* et *Registre*. En-têtes figés, filtre automatique, dates et montants au bon format, niveaux de délai teintés. Mise en page prête à l'impression : paysage ajusté à la largeur, ligne d'en-tête répétée. |
+| **CSV** | Aller-retour fidèle avec l'import tableur, pièces et observations comprises. |
+
+Les bibliothèques d'export sont chargées à la demande : elles ne pèsent sur le
+temps d'ouverture d'aucune autre page.
+
+## Filtre par type d'opération
+
+Le registre et les rapports partagent un même sélecteur : plusieurs types se
+cumulent, aucune sélection valant « tous les types ». Le choix est porté par
+l'URL (`?types=transfert,emprunt`), donc il survit à un rechargement et se
+partage par lien.
+
 ## Ora, assistante d'instruction
 
 Ora est le volet conversationnel de l'application. Sa persona, ses compétences et ses

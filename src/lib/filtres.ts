@@ -1,5 +1,5 @@
 import type { CalculDelai } from "./delais";
-import { TYPE_LABELS, type Dossier } from "./dossiers";
+import { TYPE_LABELS, type Dossier, type TypeDossier } from "./dossiers";
 
 export interface FiltreRegistre {
   /** Recherche libre sur la référence, le demandeur et le type. */
@@ -10,13 +10,30 @@ export interface FiltreRegistre {
   niveau: string;
   /** `__tous`, `__mine`, `__none`, ou un nom d'utilisateur. */
   analyste: string;
+  /** Types d'opération retenus. Liste vide : tous les types. */
+  types: TypeDossier[];
 }
 
-export const FILTRE_VIDE: FiltreRegistre = { q: "", statut: "", niveau: "", analyste: "__tous" };
+export const FILTRE_VIDE: FiltreRegistre = { q: "", statut: "", niveau: "", analyste: "__tous", types: [] };
 
 /** Filtre par défaut à l'ouverture du registre, selon le profil. */
 export function filtreInitial(role: string): FiltreRegistre {
   return { ...FILTRE_VIDE, analyste: role === "analyste" ? "__mine" : "__tous" };
+}
+
+const TYPES_CONNUS = Object.keys(TYPE_LABELS) as TypeDossier[];
+
+/** Lit le paramètre d'URL « types » : « transfert,emprunt ». */
+export function lireTypes(param: string | null): TypeDossier[] {
+  if (!param) return [];
+  return param
+    .split(",")
+    .map((t) => t.trim())
+    .filter((t): t is TypeDossier => TYPES_CONNUS.includes(t as TypeDossier));
+}
+
+export function ecrireTypes(types: TypeDossier[]): string {
+  return types.join(",");
 }
 
 const EN_COURS = ["en_instruction", "en_attente_pieces"];
@@ -31,6 +48,9 @@ export function correspond(d: Dossier, c: CalculDelai, f: FiltreRegistre, moi: s
   } else if (f.statut && d.statut !== f.statut) return false;
 
   if (f.niveau && c.niveau !== f.niveau) return false;
+
+  /* Liste vide : aucun filtre de type, plutôt qu'aucun résultat. */
+  if (f.types.length > 0 && !f.types.includes(d.type)) return false;
 
   switch (f.analyste) {
     case "":

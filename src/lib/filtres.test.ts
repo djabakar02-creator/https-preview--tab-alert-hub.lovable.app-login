@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { calculerDelai } from "./delais";
 import { piecesRequises, type Dossier, type Statut } from "./dossiers";
-import { correspond, filtreInitial, FILTRE_VIDE, type FiltreRegistre } from "./filtres";
+import { correspond, ecrireTypes, filtreInitial, FILTRE_VIDE, lireTypes, type FiltreRegistre } from "./filtres";
 import { addDays, toISODate } from "./dates";
 
 const today = toISODate(new Date());
@@ -82,5 +82,43 @@ describe("correspond — statut, niveau, recherche", () => {
     const dos = d({ analyste: "analyste", statut: "en_attente_pieces" });
     expect(ok(dos, { analyste: "__mine", statut: "en_cours", q: "ondimba" })).toBe(true);
     expect(ok(dos, { analyste: "__mine", statut: "valide" })).toBe(false);
+  });
+});
+
+describe("correspond — filtre par type d'opération", () => {
+  it("sans sélection, tous les types passent", () => {
+    expect(ok(d({ type: "transfert" }), { types: [] })).toBe(true);
+    expect(ok(d({ type: "emprunt" }), { types: [] })).toBe(true);
+  });
+
+  it("retient les types sélectionnés, seuls", () => {
+    expect(ok(d({ type: "transfert" }), { types: ["transfert"] })).toBe(true);
+    expect(ok(d({ type: "emprunt" }), { types: ["transfert"] })).toBe(false);
+  });
+
+  it("accepte plusieurs types à la fois", () => {
+    const f = { types: ["transfert", "emprunt"] as const };
+    expect(ok(d({ type: "transfert" }), { types: [...f.types] })).toBe(true);
+    expect(ok(d({ type: "emprunt" }), { types: [...f.types] })).toBe(true);
+    expect(ok(d({ type: "investissement" }), { types: [...f.types] })).toBe(false);
+  });
+
+  it("se combine avec les autres filtres", () => {
+    const dos = d({ type: "emprunt", analyste: "analyste", statut: "en_instruction" });
+    expect(ok(dos, { types: ["emprunt"], analyste: "__mine", statut: "en_cours" })).toBe(true);
+    expect(ok(dos, { types: ["transfert"], analyste: "__mine" })).toBe(false);
+  });
+});
+
+describe("types dans l'URL", () => {
+  it("fait l'aller-retour", () => {
+    expect(lireTypes(ecrireTypes(["transfert", "emprunt"]))).toEqual(["transfert", "emprunt"]);
+  });
+
+  it("ignore ce qui n'est pas un type connu, sans planter", () => {
+    expect(lireTypes("transfert,inconnu,emprunt")).toEqual(["transfert", "emprunt"]);
+    expect(lireTypes("")).toEqual([]);
+    expect(lireTypes(null)).toEqual([]);
+    expect(lireTypes("  transfert , emprunt ")).toEqual(["transfert", "emprunt"]);
   });
 });

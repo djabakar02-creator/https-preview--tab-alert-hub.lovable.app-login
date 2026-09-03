@@ -23,7 +23,7 @@ import {
   type TypeDossier,
 } from "../lib/dossiers";
 import { can } from "../lib/permissions";
-import { correspond } from "../lib/filtres";
+import { correspond, ecrireTypes, lireTypes } from "../lib/filtres";
 import { Empty, estClos, fmtMontant, Modal, NiveauBadge, StatutBadge } from "../components/ui";
 import { rafraichirRegistre } from "../lib/dossiers";
 
@@ -496,9 +496,13 @@ export default function Registre() {
   const [refus, setRefus] = useState<string | null>(null);
   const signaler = (m: string) => setRefus(m);
 
+  const basculerType = (t: TypeDossier) =>
+    setParam("types", ecrireTypes(types.includes(t) ? types.filter((x) => x !== t) : [...types, t]));
+
   const q = params.get("q") ?? "";
   const statut = params.get("statut") ?? "";
   const niveau = params.get("niveau") ?? "";
+  const types = lireTypes(params.get("types"));
   /* « __tous » est une valeur explicite, et non la chaîne vide : sans cela,
      un analyste qui choisit « Tous les analystes » effacerait le paramètre et
      retomberait aussitôt sur le défaut « Mes dossiers ». */
@@ -513,9 +517,10 @@ export default function Registre() {
   const lignes = useMemo(() => {
     return dossiers
       .map((d) => ({ d, c: calculerDelai(d.dateReception, d.delaiReglementaire) }))
-      .filter(({ d, c }) => correspond(d, c, { q, statut, niveau, analyste }, user.username))
+      .filter(({ d, c }) => correspond(d, c, { q, statut, niveau, analyste, types }, user.username))
       .sort((a, b) => a.c.delaiRestant - b.c.delaiRestant);
-  }, [dossiers, q, statut, niveau, analyste, user.username]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dossiers, q, statut, niveau, analyste, params.get("types"), user.username]);
 
   const selection = id ? dossiers.find((d) => d.id === id) ?? null : null;
 
@@ -527,6 +532,14 @@ export default function Registre() {
           <h1 className="font-display text-3xl">Dossiers d'autorisation</h1>
           <p className="text-sm mt-2 opacity-70">
             {lignes.length} / {dossiers.length} dossier(s) · délais recalculés en continu depuis la date de réception
+            {types.length > 0 && (
+              <>
+                {" · "}
+                <span className="text-rouge font-semibold">
+                  {types.length} type{types.length > 1 ? "s" : ""} retenu{types.length > 1 ? "s" : ""}
+                </span>
+              </>
+            )}
           </p>
         </div>
         <div className="flex gap-2">
@@ -593,6 +606,42 @@ export default function Registre() {
             </option>
           ))}
         </select>
+
+        {/* Types d'opération : sélection multiple, aucune sélection valant « tous ». */}
+        <fieldset className="sm:col-span-2 lg:col-span-4 border-t border-ink/15 pt-3 mt-1">
+          <div className="flex items-center justify-between gap-3 mb-2">
+            <legend className="label-caps text-[10px] opacity-70">Type d'opération</legend>
+            <button
+              type="button"
+              className="btn-sm"
+              disabled={types.length === 0}
+              onClick={() => setParam("types", "")}
+              title="Afficher tous les types"
+            >
+              Tous les types
+            </button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.keys(TYPE_LABELS) as TypeDossier[]).map((t) => {
+              const actif = types.includes(t);
+              const n = dossiers.filter((d) => d.type === t).length;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  aria-pressed={actif}
+                  onClick={() => basculerType(t)}
+                  className={`text-[11px] font-semibold px-2.5 py-1.5 border transition ${
+                    actif ? "bg-ink text-white border-ink" : "border-ink/40 hover:border-ink"
+                  }`}
+                >
+                  {TYPE_LABELS[t]}
+                  <span className={`ml-1.5 tabular-nums ${actif ? "opacity-70" : "opacity-50"}`}>{n}</span>
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
       </div>
 
       <div className="card overflow-x-auto">

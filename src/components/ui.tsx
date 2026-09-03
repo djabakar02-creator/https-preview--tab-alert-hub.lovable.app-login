@@ -1,4 +1,5 @@
 import { useEffect, type ReactNode } from "react";
+import { formatNombreFR } from "../lib/dates";
 import { NIVEAU_LABELS, type Niveau } from "../lib/delais";
 import { STATUT_LABELS, type Statut } from "../lib/dossiers";
 
@@ -82,5 +83,5 @@ export function Section({ title, aside, children }: { title: string; aside?: Rea
 export const estClos = (statut: Statut) => statut === "valide" || statut === "rejete";
 
 export function fmtMontant(m: number, devise: string): string {
-  return m ? `${m.toLocaleString("fr-FR")} ${devise}` : "—";
+  return m ? `${formatNombreFR(m)}\u00A0${devise}` : "—";
 }
