@@ -70,7 +70,7 @@ export default function App() {
   if (!pret) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p className="label-caps opacity-60">Chargement du registre…</p>
+        <p className="label-caps text-muted">Chargement du registre…</p>
       </div>
     );
   }

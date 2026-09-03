@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { formatClock, formatNombreFR } from "../lib/dates";
-import { TYPE_LABELS, toCSV, useDossiers, type TypeDossier } from "../lib/dossiers";
+import { TYPE_COURT, TYPE_LABELS, toCSV, useDossiers, type TypeDossier } from "../lib/dossiers";
 import { ecrireTypes, lireTypes } from "../lib/filtres";
 import { construireRapport, type Rapport } from "../lib/rapport";
 import { Section } from "../components/ui";
@@ -11,8 +11,8 @@ import { telechargerFichier } from "../lib/telechargement";
    de teintes de série. Chaque barre porte aussi son intitulé, donc l'information
    ne repose jamais sur la seule couleur. */
 const TEINTE_NIVEAU: Record<string, string> = {
-  conforme: "bg-emerald-700",
-  a_suivre: "bg-amber-600",
+  conforme: "bg-ok",
+  a_suivre: "bg-attention",
   urgent: "bg-rouge",
   depasse: "bg-ink",
 };
@@ -35,12 +35,12 @@ function Barre({
   return (
     <div className="flex items-center gap-3 text-sm" title={`${label} : ${valeur} (${pct} %)`}>
       <span className="w-52 shrink-0 truncate">{label}</span>
-      <div className="flex-1 h-2.5 bg-sand border border-ink/15 min-w-[60px]">
+      <div className="flex-1 h-2.5 bg-sand border border-hair min-w-[60px]">
         <div className={`h-full ${teinte}`} style={{ width: `${pct}%` }} />
       </div>
       <span className="w-20 text-right tabular-nums font-bold">
         {valeur}
-        {suffixe ?? ""} <span className="opacity-55 font-normal">({pct} %)</span>
+        {suffixe ?? ""} <span className="text-muted font-normal">({pct} %)</span>
       </span>
     </div>
   );
@@ -62,9 +62,9 @@ function Flux({ lignes }: { lignes: Rapport["parMois"] }) {
           </div>
         ))}
       </div>
-      <div className="flex gap-[2px] border-t border-ink/30 pt-1.5 mt-0.5">
+      <div className="flex gap-[2px] border-t border-ink/35 pt-1.5 mt-0.5">
         {lignes.map((m, i) => (
-          <span key={m.mois} className="flex-1 text-[9px] text-center opacity-60 truncate">
+          <span key={m.mois} className="flex-1 text-[9px] text-center text-muted truncate">
             {i % 2 === 0 ? m.libelle : ""}
           </span>
         ))}
@@ -76,7 +76,7 @@ function Flux({ lignes }: { lignes: Rapport["parMois"] }) {
 function Tuile({ label, valeur, alerte }: { label: string; valeur: string; alerte?: boolean }) {
   return (
     <div className="card p-4">
-      <p className="label-caps text-[10px] opacity-70">{label}</p>
+      <p className="label-caps text-[10px] text-muted">{label}</p>
       <p className={`font-display text-4xl mt-2 tabular-nums ${alerte ? "text-rouge" : ""}`}>{valeur}</p>
     </div>
   );
@@ -146,7 +146,7 @@ export default function Rapports() {
         <div>
           <p className="label-caps text-rouge mb-1">Rapports</p>
           <h1 className="font-display text-3xl">Synthèse du registre</h1>
-          <p className="text-sm mt-2 opacity-70">
+          <p className="text-sm mt-2 text-muted">
             {perimetre} · {rapport.total} dossier(s) · généré le <span className="font-mono">{formatClock(genereLe)}</span>
           </p>
         </div>
@@ -160,7 +160,7 @@ export default function Rapports() {
           <button type="button" className="btn-ghost" disabled={Boolean(enCoursExport)} onClick={() => exporter("xlsx")}>
             {libelleExport("xlsx", "Classeur XLSX")}
           </button>
-          <button type="button" className="btn-ghost bg-ink text-white" disabled={Boolean(enCoursExport)} onClick={() => exporter("pdf")}>
+          <button type="button" className="btn-ghost bg-fort text-sur-fort" disabled={Boolean(enCoursExport)} onClick={() => exporter("pdf")}>
             {libelleExport("pdf", "Synthèse PDF")}
           </button>
         </div>
@@ -174,13 +174,13 @@ export default function Rapports() {
       {/* Périmètre : mêmes types que dans le registre. */}
       <div className="card p-4">
         <div className="flex items-center justify-between gap-3 mb-2">
-          <p className="label-caps text-[10px] opacity-70">Type d'opération</p>
+          <p className="label-caps text-[10px] text-muted">Type d'opération</p>
           <button type="button" className="btn-sm" disabled={types.length === 0} onClick={() => setTypes([])}>
             Tous les types
           </button>
         </div>
         <div className="flex flex-wrap gap-1.5">
-          {(Object.keys(TYPE_LABELS) as TypeDossier[]).map((t) => {
+          {(Object.keys(TYPE_COURT) as TypeDossier[]).map((t) => {
             const actif = types.includes(t);
             const n = dossiers.filter((d) => d.type === t).length;
             return (
@@ -189,11 +189,10 @@ export default function Rapports() {
                 type="button"
                 aria-pressed={actif}
                 onClick={() => setTypes(actif ? types.filter((x) => x !== t) : [...types, t])}
-                className={`text-[11px] font-semibold px-2.5 py-1.5 border transition ${
-                  actif ? "bg-ink text-white border-ink" : "border-ink/40 hover:border-ink"
-                }`}
+                title={TYPE_LABELS[t]}
+                className={actif ? "puce-active" : "puce-inactive"}
               >
-                {TYPE_LABELS[t]}
+                {TYPE_COURT[t]}
                 <span className={`ml-1.5 tabular-nums ${actif ? "opacity-70" : "opacity-50"}`}>{n}</span>
               </button>
             );
@@ -249,13 +248,13 @@ export default function Rapports() {
           </div>
         </Section>
 
-        <Section title="Réceptions par mois" aside={<span className="label-caps text-[9px] opacity-60">12 derniers mois</span>}>
+        <Section title="Réceptions par mois" aside={<span className="label-caps text-[9px] text-muted">12 derniers mois</span>}>
           <Flux lignes={rapport.parMois} />
         </Section>
 
         <Section title="Montants par devise">
           {rapport.parDevise.length === 0 ? (
-            <p className="text-sm opacity-60 italic py-4">Aucun montant renseigné sur ce périmètre.</p>
+            <p className="text-sm text-muted italic py-4">Aucun montant renseigné sur ce périmètre.</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -268,7 +267,7 @@ export default function Rapports() {
                 </thead>
                 <tbody>
                   {rapport.parDevise.map((d) => (
-                    <tr key={d.devise} className="border-b border-ink/10">
+                    <tr key={d.devise} className="border-b border-hair">
                       <td className="py-2 pr-4 font-semibold">{d.devise}</td>
                       <td className="py-2 pr-4 text-right tabular-nums">{d.nombre}</td>
                       <td className="py-2 text-right tabular-nums font-bold">{formatNombreFR(d.montant)}</td>
@@ -298,20 +297,20 @@ export default function Rapports() {
             </thead>
             <tbody>
               {rapport.parType.map((t) => (
-                <tr key={t.type} className="border-b border-ink/10 hover:bg-sand/40">
+                <tr key={t.type} className="border-b border-hair hover:bg-sand/40">
                   <td className="px-3 py-2.5 font-semibold">{t.libelle}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{t.total}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{t.enCours}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums opacity-60">{t.clos}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-muted">{t.clos}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{t.delaiMoyen === null ? "—" : `${t.delaiMoyen} j`}</td>
-                  <td className={`px-3 py-2.5 text-right tabular-nums ${t.urgents ? "text-rouge font-bold" : "opacity-60"}`}>{t.urgents}</td>
-                  <td className={`px-3 py-2.5 text-right tabular-nums ${t.depasses ? "text-rouge font-bold" : "opacity-60"}`}>{t.depasses}</td>
+                  <td className={`px-3 py-2.5 text-right tabular-nums ${t.urgents ? "text-rouge font-bold" : "text-muted"}`}>{t.urgents}</td>
+                  <td className={`px-3 py-2.5 text-right tabular-nums ${t.depasses ? "text-rouge font-bold" : "text-muted"}`}>{t.depasses}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{t.completude} %</td>
                 </tr>
               ))}
               {rapport.parType.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-6 text-center text-sm opacity-60 italic">
+                  <td colSpan={8} className="py-6 text-center text-sm text-muted italic">
                     Aucun dossier sur ce périmètre.
                   </td>
                 </tr>
@@ -335,11 +334,11 @@ export default function Rapports() {
             </thead>
             <tbody>
               {rapport.parAnalyste.map((a) => (
-                <tr key={a.analyste} className="border-b border-ink/10 hover:bg-sand/40">
+                <tr key={a.analyste} className="border-b border-hair hover:bg-sand/40">
                   <td className={`px-3 py-2.5 font-semibold ${a.analyste === "Non attribué" ? "text-rouge" : ""}`}>{a.analyste}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{a.enCours}</td>
-                  <td className={`px-3 py-2.5 text-right tabular-nums ${a.urgents ? "text-rouge font-bold" : "opacity-60"}`}>{a.urgents}</td>
-                  <td className={`px-3 py-2.5 text-right tabular-nums ${a.depasses ? "text-rouge font-bold" : "opacity-60"}`}>{a.depasses}</td>
+                  <td className={`px-3 py-2.5 text-right tabular-nums ${a.urgents ? "text-rouge font-bold" : "text-muted"}`}>{a.urgents}</td>
+                  <td className={`px-3 py-2.5 text-right tabular-nums ${a.depasses ? "text-rouge font-bold" : "text-muted"}`}>{a.depasses}</td>
                   <td className="px-3 py-2.5 text-right tabular-nums">{a.delaiMin === null ? "—" : `${a.delaiMin} j`}</td>
                 </tr>
               ))}

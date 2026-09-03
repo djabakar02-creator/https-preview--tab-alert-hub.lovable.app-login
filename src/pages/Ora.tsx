@@ -28,7 +28,7 @@ function Rendu({ text }: { text: string }) {
         const italique = para.startsWith("_") && para.endsWith("_");
         const contenu = italique ? para.slice(1, -1) : para;
         return (
-          <p key={i} className={italique ? "text-xs opacity-60 italic" : para.trimStart().startsWith("- ") ? "pl-4" : ""}>
+          <p key={i} className={italique ? "text-xs text-muted italic" : para.trimStart().startsWith("- ") ? "pl-4" : ""}>
             {contenu.split(/(\*\*[^*]+\*\*)/g).map((seg, j) =>
               seg.startsWith("**") ? <strong key={j}>{seg.slice(2, -2)}</strong> : <span key={j}>{seg}</span>,
             )}
@@ -96,12 +96,12 @@ export default function Ora() {
         <div className="flex-1 min-w-[240px]">
           <p className="label-caps text-rouge">{ORA.fonction}</p>
           <h1 className="font-display text-3xl mt-0.5">{ORA.nom}</h1>
-          <p className="text-sm mt-1 opacity-70">{ORA.service}</p>
-          <p className="text-sm italic opacity-60 mt-2">« {ORA.devise} »</p>
+          <p className="text-sm mt-1 text-muted">{ORA.service}</p>
+          <p className="text-sm italic text-muted mt-2">« {ORA.devise} »</p>
         </div>
         <ul className="flex flex-wrap gap-1.5 max-w-[520px]">
           {ORA_COMPETENCES.map((c) => (
-            <li key={c} className="border border-ink/50 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em]">
+            <li key={c} className="border border-ink/45 px-2 py-1 text-[10px] font-bold uppercase tracking-[0.12em]">
               {c}
             </li>
           ))}
@@ -122,22 +122,22 @@ export default function Ora() {
             {dossier && calc && (
               <dl className="mt-4 text-sm space-y-1">
                 <div className="flex justify-between gap-2">
-                  <dt className="opacity-70">Jours écoulés</dt>
+                  <dt className="text-muted">Jours écoulés</dt>
                   <dd className="font-bold tabular-nums">J+{calc.joursEcoules}</dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="opacity-70">Délai restant</dt>
+                  <dt className="text-muted">Délai restant</dt>
                   <dd className={`font-bold tabular-nums ${calc.delaiRestant <= 3 ? "text-rouge" : ""}`}>{calc.delaiRestant} j</dd>
                 </div>
                 <div className="flex justify-between gap-2">
-                  <dt className="opacity-70">Pièces fournies</dt>
+                  <dt className="text-muted">Pièces fournies</dt>
                   <dd className="font-bold tabular-nums">
                     {dossier.pieces.filter((p) => p.fourni).length}/{dossier.pieces.length}
                   </dd>
                 </div>
               </dl>
             )}
-            <p className="text-xs opacity-60 mt-4">
+            <p className="text-xs text-muted mt-4">
               Ora reprend le délai restant calculé en continu par le registre. Elle ne le recalcule pas et ne cite jamais de référence
               réglementaire qu'elle n'a pas dans le dossier.
             </p>
@@ -149,7 +149,7 @@ export default function Ora() {
                 <li key={s}>
                   <button
                     type="button"
-                    className="text-left text-xs border border-ink/30 w-full px-2.5 py-2 hover:border-rouge hover:text-rouge transition disabled:opacity-40"
+                    className="btn-liste"
                     disabled={enCours}
                     onClick={() => envoyer(s)}
                   >
@@ -175,7 +175,7 @@ export default function Ora() {
             {messages.length === 0 && !enCours && (
               <div className="flex gap-3 items-start">
                 <OraAvatar size={36} />
-                <div className="border border-ink/40 bg-white px-4 py-3 max-w-[90%]">
+                <div className="border border-ink/35 bg-card px-4 py-3 max-w-[90%]">
                   <p className="text-sm leading-relaxed">
                     Bonjour {user.displayName}. Je suis {ORA.nom}, {ORA.fonction.toLowerCase()} au Service des Autorisations.
                     Sélectionnez un dossier du registre, puis posez votre question ou utilisez une des demandes fréquentes.
@@ -187,8 +187,8 @@ export default function Ora() {
             {messages.map((m, i) =>
               m.role === "user" ? (
                 <div key={i} className="text-right">
-                  <p className="label-caps text-[9px] opacity-60 mb-1">Vous</p>
-                  <div className="inline-block text-left bg-ink text-white px-4 py-3 max-w-[85%]">
+                  <p className="label-caps text-[9px] text-muted mb-1">Vous</p>
+                  <div className="inline-block text-left bg-fort text-sur-fort px-4 py-3 max-w-[85%]">
                     <p className="text-sm leading-relaxed">{m.content}</p>
                   </div>
                 </div>
@@ -196,11 +196,11 @@ export default function Ora() {
                 <div key={i} className="flex gap-3 items-start">
                   <OraAvatar size={36} />
                   <div className="max-w-[90%]">
-                    <p className="label-caps text-[9px] opacity-60 mb-1">
+                    <p className="label-caps text-[9px] text-muted mb-1">
                       {ORA.nom}
                       {m.moteur ? ` · ${MOTEUR_LABELS[m.moteur]}` : ""}
                     </p>
-                    <div className="border border-ink/40 bg-white px-4 py-3">
+                    <div className="border border-ink/35 bg-card px-4 py-3">
                       <Rendu text={m.content} />
                     </div>
                   </div>
@@ -212,9 +212,9 @@ export default function Ora() {
               <div className="flex gap-3 items-start">
                 <OraAvatar size={36} actif />
                 <div className="max-w-[90%]">
-                  <p className="label-caps text-[9px] opacity-60 mb-1">{ORA.nom}</p>
-                  <div className="border border-ink/40 bg-white px-4 py-3">
-                    {partiel ? <Rendu text={partiel} /> : <p className="text-sm opacity-60">Instruction en cours…</p>}
+                  <p className="label-caps text-[9px] text-muted mb-1">{ORA.nom}</p>
+                  <div className="border border-ink/35 bg-card px-4 py-3">
+                    {partiel ? <Rendu text={partiel} /> : <p className="text-sm text-muted">Instruction en cours…</p>}
                   </div>
                 </div>
               </div>

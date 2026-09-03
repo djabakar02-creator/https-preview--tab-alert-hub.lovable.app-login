@@ -48,7 +48,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
         {kpis.map((k) => (
           <Link key={k.label} to={k.to} className="card p-4 hover:border-rouge transition block">
-            <p className="label-caps text-[10px] opacity-70">{k.label}</p>
+            <p className="label-caps text-[10px] text-muted">{k.label}</p>
             <p className={`font-display text-4xl mt-2 ${k.rouge && k.value > 0 ? "text-rouge" : ""}`}>{k.value}</p>
           </Link>
         ))}
@@ -80,7 +80,7 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {prioritaires.map(({ d, c }) => (
-                  <tr key={d.id} className="border-b border-ink/10 hover:bg-sand/60 cursor-pointer" onClick={() => navigate(`/registre/${d.id}`)}>
+                  <tr key={d.id} className="border-b border-hair hover:bg-sand/60 cursor-pointer" onClick={() => navigate(`/registre/${d.id}`)}>
                     <td className="py-2.5 pr-4 font-mono text-xs">{d.reference}</td>
                     <td className="py-2.5 pr-4 font-semibold">{d.demandeur}</td>
                     <td className="py-2.5 pr-4">{formatDateFR(d.dateReception)}</td>

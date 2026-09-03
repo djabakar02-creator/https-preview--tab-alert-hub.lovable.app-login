@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../App";
 import { DEMO_ACCOUNTS, seConnecter } from "../lib/auth";
 import { formatEdition, formatLongDateFR } from "../lib/dates";
+import { BoutonTheme } from "../components/BarreSuperieure";
 
 export default function Login() {
   const { login } = useAuth();
@@ -35,7 +36,7 @@ export default function Login() {
   }
 
   return (
-    <main className="min-h-screen bg-white flex items-center justify-center p-6">
+    <main className="min-h-screen bg-card flex items-center justify-center p-6">
       <div className="w-full max-w-[1200px] grid grid-cols-1 lg:grid-cols-[1fr_422px] border border-line shadow-[0_0_0_1px_rgba(0,0,0,0.02)]">
         {/* Panneau éditorial */}
         <section className="bg-paper border-t-[5px] border-t-rouge flex flex-col">
@@ -66,15 +67,18 @@ export default function Login() {
             </p>
           </div>
 
-          <footer className="flex items-center justify-between px-8 py-3 border-t border-line">
+          <footer className="flex items-center justify-between gap-3 px-8 py-2.5 border-t border-line">
             <p className="label-caps">{formatLongDateFR(today)}</p>
-            <p className="label-caps">Usage réservé</p>
+            <div className="flex items-center gap-4">
+              <p className="label-caps hidden sm:block">Usage réservé</p>
+              <BoutonTheme />
+            </div>
           </footer>
         </section>
 
         {/* Panneau connexion */}
         <section className="flex flex-col border-t border-line lg:border-t-0 lg:border-l border-l-line">
-          <div className="bg-ink text-white px-8 pt-8 pb-9">
+          <div className="bg-fort text-sur-fort px-8 pt-8 pb-9">
             <p className="label-caps mb-4">Accès registre</p>
             <h2 className="font-display text-[28px] leading-none tracking-tight uppercase">Connexion</h2>
           </div>

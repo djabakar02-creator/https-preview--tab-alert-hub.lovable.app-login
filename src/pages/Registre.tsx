@@ -145,7 +145,7 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
               </option>
             ))}
           </select>
-          <span className="block text-[11px] opacity-60 mt-1 leading-snug">{TYPE_LABELS[f.type]}</span>
+          <span className="block text-[11px] text-muted mt-1 leading-snug">{TYPE_LABELS[f.type]}</span>
         </label>
 
         {sousTypes && (
@@ -194,7 +194,7 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
             Délai restant : <strong className={calc.delaiRestant <= 3 ? "text-rouge" : ""}>{calc.delaiRestant} j</strong>
           </span>
           <NiveauBadge niveau={calc.niveau} />
-          <span className="opacity-60 text-xs w-full">
+          <span className="text-muted text-xs w-full">
             Calculé automatiquement : date du jour − date de réception
             {DELAIS[f.type].ouvres ? ", en jours ouvrés" : ""}. Non modifiable.
             {DELAIS[f.type].source === "defaut" && (
@@ -267,7 +267,7 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
           <button type="button" className="btn-ghost" onClick={onClose}>
             Annuler
           </button>
-          <button type="submit" className="btn-ghost bg-ink text-white" disabled={envoi}>
+          <button type="submit" className="btn-ghost bg-fort text-sur-fort" disabled={envoi}>
             {envoi ? "Enregistrement…" : "Enregistrer"}
           </button>
         </div>
@@ -297,30 +297,30 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
         <div className="space-y-5">
           <div>
             <p className="font-display text-2xl">{d.demandeur}</p>
-            <p className="text-sm opacity-70">{TYPE_LABELS[d.type]}</p>
-            {d.sousType && <p className="text-sm opacity-70 italic">{d.sousType}</p>}
-            <p className="text-sm opacity-70">{fmtMontant(d.montant, d.devise)}</p>
+            <p className="text-sm text-muted">{TYPE_LABELS[d.type]}</p>
+            {d.sousType && <p className="text-sm text-muted italic">{d.sousType}</p>}
+            <p className="text-sm text-muted">{fmtMontant(d.montant, d.devise)}</p>
             <div className="flex gap-2 mt-2">
               <StatutBadge statut={d.statut} />
               <NiveauBadge niveau={c.niveau} clos={clos} />
             </div>
           </div>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-            <dt className="opacity-70">Réception BEAC</dt>
+            <dt className="text-muted">Réception BEAC</dt>
             <dd className="font-semibold">{formatDateFR(d.dateReception)}</dd>
-            <dt className="opacity-70">Délai réglementaire</dt>
+            <dt className="text-muted">Délai réglementaire</dt>
             <dd className="font-semibold">
               {d.delaiReglementaire} jours{DELAIS[d.type].ouvres ? " ouvrés" : ""}
             </dd>
-            <dt className="opacity-70">Jours écoulés</dt>
+            <dt className="text-muted">Jours écoulés</dt>
             <dd className="font-semibold tabular-nums">J+{c.joursEcoules}</dd>
-            <dt className="opacity-70">Échéance</dt>
+            <dt className="text-muted">Échéance</dt>
             <dd className="font-semibold">{formatDateFR(c.echeance)}</dd>
-            <dt className="opacity-70">Délai restant</dt>
+            <dt className="text-muted">Délai restant</dt>
             <dd className={`font-bold tabular-nums ${!clos && c.delaiRestant <= 3 ? "text-rouge" : ""}`}>
               {clos ? "— (dossier clos)" : `${c.delaiRestant} jour(s)`}
             </dd>
-            <dt className="opacity-70">Analyste traitant</dt>
+            <dt className="text-muted">Analyste traitant</dt>
             <dd className="font-semibold">{d.analyste ?? <span className="text-rouge">Non attribué</span>}</dd>
           </dl>
           <div>
@@ -328,7 +328,7 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
             <ul className="text-sm space-y-1">
               {d.pieces.map((p) => (
                 <li key={p.label} className="flex items-center gap-2">
-                  <span className={`inline-block w-2.5 h-2.5 border ${p.fourni ? "bg-emerald-600 border-emerald-700" : "bg-white border-rouge"}`} />
+                  <span className={`inline-block w-2.5 h-2.5 border ${p.fourni ? "bg-ok border-ok" : "bg-card border-rouge"}`} />
                   {p.label}
                   {!p.fourni && <span className="text-rouge text-[10px] font-bold uppercase tracking-widest ml-1">manquante</span>}
                 </li>
@@ -346,7 +346,7 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
             <ol className="text-xs space-y-1 border-l-2 border-line pl-3">
               {[...d.historique].reverse().map((h, i) => (
                 <li key={i}>
-                  <span className="font-mono opacity-60">{formatDateTimeFR(h.date)}</span> · <strong>{h.auteur}</strong> — {h.action}
+                  <span className="font-mono text-muted">{formatDateTimeFR(h.date)}</span> · <strong>{h.auteur}</strong> — {h.action}
                 </li>
               ))}
             </ol>
@@ -363,10 +363,10 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
           </button>
           {can.decide(user, d) && !clos && (
             <>
-              <button type="button" className="btn-ghost w-full bg-ink text-white" onClick={() => decider("valide", "Validation du dossier")}>
+              <button type="button" className="btn-ghost w-full bg-fort text-sur-fort" onClick={() => decider("valide", "Validation du dossier")}>
                 Valider
               </button>
-              <button type="button" className="btn-ghost w-full text-rouge border-rouge" onClick={() => decider("rejete", "Rejet du dossier")}>
+              <button type="button" className="btn-danger w-full" onClick={() => decider("rejete", "Rejet du dossier")}>
                 Rejeter
               </button>
             </>
@@ -415,7 +415,7 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
                   <div className="flex gap-1">
                     <button
                       type="button"
-                      className="btn-sm bg-rouge text-white border-rouge"
+                      className="btn-sm border-rouge bg-rouge text-sur-rouge"
                       onClick={() => void ecrire(() => removeDossier(d.id), signaler).then((ok) => ok && onClose())}
                     >
                       Confirmer
@@ -426,7 +426,7 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
                   </div>
                 </div>
               ) : (
-                <button type="button" className="btn-ghost w-full text-rouge border-rouge" onClick={() => setConfirmSuppr(true)}>
+                <button type="button" className="btn-danger w-full" onClick={() => setConfirmSuppr(true)}>
                   Supprimer
                 </button>
               )}
@@ -473,7 +473,7 @@ function ImportModal({ onClose, signaler }: { onClose: () => void; signaler: (m:
   return (
     <Modal title="Import tableur (CSV)" onClose={onClose} wide>
       <div className="space-y-4 text-sm">
-        <p className="opacity-70">
+        <p className="text-muted">
           Colonnes attendues (séparateur ; ou ,) :{" "}
           <code className="font-mono text-xs">
             reference;demandeur;type;montant;devise;dateReception;delaiReglementaire;analyste;statut;pieces;observations
@@ -512,7 +512,7 @@ function ImportModal({ onClose, signaler }: { onClose: () => void; signaler: (m:
           <button type="button" className="btn-ghost" disabled={!texte.trim()} onClick={() => setResultat(fromCSV(texte))}>
             Analyser
           </button>
-          <button type="button" className="btn-ghost bg-ink text-white" disabled={!resultat || resultat.dossiers.length === 0} onClick={appliquer}>
+          <button type="button" className="btn-ghost bg-fort text-sur-fort" disabled={!resultat || resultat.dossiers.length === 0} onClick={appliquer}>
             Importer
           </button>
         </div>
@@ -570,7 +570,7 @@ export default function Registre() {
         <div>
           <p className="label-caps text-rouge mb-1">Registre</p>
           <h1 className="font-display text-3xl">Dossiers d'autorisation</h1>
-          <p className="text-sm mt-2 opacity-70">
+          <p className="text-sm mt-2 text-muted">
             {lignes.length} / {dossiers.length} dossier(s) · délais recalculés en continu depuis la date de réception
             {types.length > 0 && (
               <>
@@ -601,7 +601,7 @@ export default function Registre() {
             </>
           )}
           {can.create(user) && (
-            <button type="button" className="btn-ghost bg-ink text-white" onClick={() => setFormulaire({ open: true, dossier: null })}>
+            <button type="button" className="btn-ghost bg-fort text-sur-fort" onClick={() => setFormulaire({ open: true, dossier: null })}>
               Nouveau dossier
             </button>
           )}
@@ -618,7 +618,7 @@ export default function Registre() {
       )}
 
       <div className="card p-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <input className="field" placeholder="Rechercher (référence, demandeur, type)…" value={q} onChange={(e) => setParam("q", e.target.value)} aria-label="Recherche" />
+        <input className="field" placeholder="Référence, demandeur, type…" value={q} onChange={(e) => setParam("q", e.target.value)} aria-label="Recherche" />
         <select className="field" value={statut} onChange={(e) => setParam("statut", e.target.value)} aria-label="Statut">
           <option value="">Tous les statuts</option>
           <option value="en_cours">En cours (instruction + attente)</option>
@@ -648,9 +648,9 @@ export default function Registre() {
         </select>
 
         {/* Types d'opération : sélection multiple, aucune sélection valant « tous ». */}
-        <fieldset className="sm:col-span-2 lg:col-span-4 border-t border-ink/15 pt-3 mt-1">
+        <fieldset className="sm:col-span-2 lg:col-span-4 border-t border-hair pt-3 mt-1">
           <div className="flex items-center justify-between gap-3 mb-2">
-            <legend className="label-caps text-[10px] opacity-70">Type d'opération</legend>
+            <legend className="label-caps text-[10px] text-muted">Type d'opération</legend>
             <button
               type="button"
               className="btn-sm"
@@ -672,9 +672,7 @@ export default function Registre() {
                   aria-pressed={actif}
                   onClick={() => basculerType(t)}
                   title={TYPE_LABELS[t]}
-                  className={`text-[11px] font-semibold px-2.5 py-1.5 border transition ${
-                    actif ? "bg-ink text-white border-ink" : "border-ink/40 hover:border-ink"
-                  }`}
+                  className={actif ? "puce-active" : "puce-inactive"}
                 >
                   {TYPE_COURT[t]}
                   <span className={`ml-1.5 tabular-nums ${actif ? "opacity-70" : "opacity-50"}`}>{n}</span>
@@ -689,38 +687,42 @@ export default function Registre() {
         {lignes.length === 0 ? (
           <Empty>Aucun dossier ne correspond aux filtres.</Empty>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full min-w-[940px] text-sm">
             <thead>
               <tr className="text-left label-caps text-[10px] border-b border-line bg-sand/60">
-                <th className="px-4 py-2.5">Référence</th>
-                <th className="px-4 py-2.5">Demandeur</th>
-                <th className="px-4 py-2.5">Type</th>
-                <th className="px-4 py-2.5">Réception</th>
-                <th className="px-4 py-2.5">Échéance</th>
-                <th className="px-4 py-2.5">Écoulé</th>
-                <th className="px-4 py-2.5">Restant</th>
-                <th className="px-4 py-2.5">Niveau</th>
-                <th className="px-4 py-2.5">Analyste</th>
-                <th className="px-4 py-2.5">Statut</th>
-                <th className="px-4 py-2.5 text-right">Actions</th>
+                <th className="px-3 py-2.5">Référence</th>
+                <th className="px-3 py-2.5">Demandeur</th>
+                <th className="px-3 py-2.5">Type</th>
+                <th className="px-3 py-2.5">Réception / échéance</th>
+                <th className="px-3 py-2.5">Délai</th>
+                <th className="px-3 py-2.5">Niveau</th>
+                <th className="px-3 py-2.5">Analyste</th>
+                <th className="px-3 py-2.5">Statut</th>
+                <th className="px-3 py-2.5 text-right">Action</th>
               </tr>
             </thead>
             <tbody>
               {lignes.map(({ d, c }) => {
                 const clos = estClos(d.statut);
                 return (
-                  <tr key={d.id} className="border-b border-ink/10 hover:bg-sand/50 cursor-pointer" onClick={() => navigate(`/registre/${d.id}`)}>
+                  <tr key={d.id} className="border-b border-hair hover:bg-sand/50 cursor-pointer" onClick={() => navigate(`/registre/${d.id}`)}>
                     <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{d.reference}</td>
                     <td className="px-3 py-2 font-semibold">{d.demandeur}</td>
                     <td className="px-3 py-2 text-xs min-w-[170px]" title={TYPE_LABELS[d.type]}>
                       {TYPE_COURT[d.type]}
-                      {d.sousType && <span className="block opacity-55">{d.sousType}</span>}
+                      {d.sousType && <span className="block text-muted">{d.sousType}</span>}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap">{formatDateFR(d.dateReception)}</td>
-                    <td className="px-3 py-2 whitespace-nowrap">{formatDateFR(c.echeance)}</td>
-                    <td className="px-3 py-2 tabular-nums">J+{c.joursEcoules}</td>
-                    <td className={`px-3 py-2 tabular-nums font-bold ${!clos && c.delaiRestant <= 3 ? "text-rouge" : ""}`}>
-                      {clos ? "—" : `${c.delaiRestant} j`}
+                    {/* Les deux dates et les deux compteurs tiennent chacun dans une
+                        colonne : la ligne reste lisible sans défilement latéral. */}
+                    <td className="px-3 py-2 whitespace-nowrap tabular-nums text-xs">
+                      {formatDateFR(d.dateReception)}
+                      <span className="block text-muted">→ {formatDateFR(c.echeance)}</span>
+                    </td>
+                    <td className="px-3 py-2 whitespace-nowrap tabular-nums">
+                      <span className={`font-bold ${!clos && c.delaiRestant <= 3 ? "text-rouge" : ""}`}>
+                        {clos ? "—" : `${c.delaiRestant} j`}
+                      </span>
+                      <span className="block text-muted text-xs">J+{c.joursEcoules}</span>
                     </td>
                     <td className="px-3 py-2">
                       <NiveauBadge niveau={c.niveau} clos={clos} />
@@ -729,10 +731,7 @@ export default function Registre() {
                     <td className="px-3 py-2">
                       <StatutBadge statut={d.statut} />
                     </td>
-                    <td className="px-3 py-2 text-right whitespace-nowrap space-x-1" onClick={(e) => e.stopPropagation()}>
-                      <button type="button" className="btn-sm" onClick={() => navigate(`/registre/${d.id}`)}>
-                        Voir
-                      </button>
+                    <td className="px-3 py-2 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
                         className="btn-sm"

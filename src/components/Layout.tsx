@@ -1,21 +1,6 @@
-import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
-import { useAuth, useUser } from "../App";
-import { ROLE_LABELS } from "../lib/auth";
-import { formatClock } from "../lib/dates";
-
-function Horloge({ compact }: { compact?: boolean }) {
-  const [now, setNow] = useState(() => new Date());
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
-  return (
-    <time dateTime={now.toISOString()} className={`font-mono tabular-nums ${compact ? "text-[12px]" : "text-[13px]"}`} aria-live="off">
-      {formatClock(now)}
-    </time>
-  );
-}
+import { useState } from "react";
+import { NavLink, Outlet } from "react-router-dom";
+import BarreSuperieure from "./BarreSuperieure";
 
 /** Pictogrammes de la navigation : traits simples, dans la ligne graphique du registre. */
 const ICONES: Record<string, JSX.Element> = {
@@ -58,107 +43,77 @@ const LIENS = [
   { to: "/ora", label: "Ora", icone: "ora" },
 ];
 
-function Nav({ onNavigue }: { onNavigue?: () => void }) {
-  return (
-    <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible" aria-label="Navigation principale">
-      {LIENS.map((l) => (
-        <NavLink
-          key={l.to}
-          to={l.to}
-          end={l.end}
-          onClick={onNavigue}
-          className={({ isActive }) =>
-            `label-caps flex items-center gap-3 px-3 py-3 whitespace-nowrap border-l-[3px] transition ${
-              isActive ? "border-l-rouge text-rouge bg-white/60" : "border-l-transparent hover:border-l-ink hover:bg-white/40"
-            }`
-          }
-        >
-          {({ isActive }) => (
-            <>
-              <svg
-                viewBox="0 0 20 20"
-                width="17"
-                height="17"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                aria-hidden="true"
-                className={isActive ? "" : "opacity-70"}
-              >
-                {ICONES[l.icone]}
-              </svg>
-              {l.label}
-            </>
-          )}
-        </NavLink>
-      ))}
-    </nav>
-  );
-}
-
 export default function Layout() {
-  const user = useUser();
-  const { logout } = useAuth();
-  const navigate = useNavigate();
   const [ouvert, setOuvert] = useState(false);
 
-  const deconnexion = () => {
-    logout();
-    navigate("/login", { replace: true });
-  };
-
   return (
-    <div className="min-h-screen bg-white lg:grid lg:grid-cols-[248px_1fr]">
+    <div className="min-h-screen bg-paper lg:grid lg:grid-cols-[240px_1fr]">
       {/* Colonne latérale */}
-      <aside className="bg-paper border-r border-line flex flex-col lg:sticky lg:top-0 lg:h-screen">
-        <div className="border-t-[5px] border-t-rouge px-5 pt-5 pb-4 border-b border-line flex items-start justify-between gap-3">
-          <div>
-            <p className="label-caps text-[9px] leading-snug opacity-80">
-              BEAC · Direction de la
-              <br />
-              Réglementation des Changes
-            </p>
-            <p className="font-display text-[22px] leading-none mt-2">
-              BEAC‑DRC
-              <span className="block text-rouge text-[15px] mt-1">Autorisations</span>
-            </p>
-          </div>
-          <button
-            type="button"
-            className="btn-sm lg:hidden shrink-0"
-            aria-expanded={ouvert}
-            onClick={() => setOuvert((o) => !o)}
-          >
-            {ouvert ? "Fermer" : "Menu"}
-          </button>
+      <aside className="flex flex-col border-b border-line bg-card lg:sticky lg:top-0 lg:h-screen lg:border-b-0 lg:border-r">
+        <div className="border-t-4 border-t-rouge px-5 pb-5 pt-5">
+          <p className="text-[9px] font-bold uppercase leading-snug tracking-[0.16em] text-muted">
+            BEAC · Direction de la
+            <br />
+            Réglementation des Changes
+          </p>
+          <p className="mt-2.5 font-display text-[21px] leading-none">
+            BEAC‑DRC
+            <span className="mt-1 block text-[14px] text-rouge">Autorisations</span>
+          </p>
         </div>
 
-        <div className={`${ouvert ? "block" : "hidden"} lg:block flex-1 py-3`}>
-          <Nav onNavigue={() => setOuvert(false)} />
-        </div>
+        <nav
+          className={`${ouvert ? "block" : "hidden"} flex-1 border-t border-hair py-2 lg:block`}
+          aria-label="Navigation principale"
+        >
+          {LIENS.map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end={l.end}
+              onClick={() => setOuvert(false)}
+              className={({ isActive }) =>
+                `flex items-center gap-3 border-l-[3px] px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.16em] transition-colors ${
+                  isActive ? "border-l-rouge bg-sand text-rouge" : "border-l-transparent text-ink hover:bg-sand/60"
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <svg
+                    viewBox="0 0 20 20"
+                    width="16"
+                    height="16"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.6"
+                    aria-hidden="true"
+                    className={isActive ? "" : "text-muted"}
+                  >
+                    {ICONES[l.icone]}
+                  </svg>
+                  {l.label}
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
 
-        <div className={`${ouvert ? "block" : "hidden"} lg:block border-t border-line px-5 py-4`}>
-          <p className="font-bold text-sm leading-tight">{user.displayName}</p>
-          <p className="label-caps text-[9px] opacity-70 mt-0.5">{ROLE_LABELS[user.role]}</p>
-          <div className="mt-3">
-            <Horloge compact />
-          </div>
-          <button type="button" className="btn-ghost w-full mt-3 text-[10px] py-2" onClick={deconnexion}>
-            Déconnexion
-          </button>
-        </div>
+        <p className="hidden border-t border-hair px-5 py-3 text-[9px] font-bold uppercase tracking-[0.16em] text-muted lg:block">
+          Service des Autorisations
+        </p>
       </aside>
 
       {/* Contenu */}
-      <div className="flex flex-col min-w-0">
-        <main className="flex-1 w-full px-6 lg:px-10 py-8">
+      <div className="flex min-w-0 flex-col">
+        <BarreSuperieure onMenu={() => setOuvert((o) => !o)} />
+        <main className="w-full flex-1 px-4 py-7 lg:px-8">
           <Outlet />
         </main>
-        <footer className="border-t border-line">
-          <div className="px-6 lg:px-10 py-3 flex justify-between">
-            <p className="label-caps">Service des Autorisations</p>
-            <p className="label-caps">Usage réservé</p>
-          </div>
+        <footer className="border-t border-line px-4 py-3 lg:px-8">
+          <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+            Usage réservé · Registre officiel des dossiers d'autorisation de change
+          </p>
         </footer>
       </div>
     </div>
