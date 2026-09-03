@@ -3,90 +3,43 @@ import { useSearchParams } from "react-router-dom";
 import { useUser } from "../App";
 import { delaiDuDossier } from "../lib/delais";
 import { useDossiers } from "../lib/dossiers";
+import { ORA, ORA_COMPETENCES, ORA_SUGGESTIONS } from "../lib/ora";
 import {
-  demanderOra,
-  ORA,
-  ORA_COMPETENCES,
-  ORA_SUGGESTIONS,
-  type Moteur,
-  type OraMessage,
-} from "../lib/ora";
+  definirDossierOra,
+  envoyerOra,
+  interrompreOra,
+  nouvelleConversationOra,
+  useOraConversation,
+} from "../lib/ora-conversation";
 import OraAvatar from "../components/OraAvatar";
+import OraRendu, { MOTEUR_LABELS } from "../components/OraRendu";
 import { Section } from "../components/ui";
 
-const MOTEUR_LABELS: Record<Moteur, string> = {
-  service: "service BEAC",
-  claude: "Claude",
-  gemini: "Gemini",
-  local: "analyse locale",
-};
-
-function Rendu({ text }: { text: string }) {
-  return (
-    <div className="space-y-2 text-sm leading-relaxed">
-      {text.split(/\n{2,}/).map((para, i) => {
-        const italique = para.startsWith("_") && para.endsWith("_");
-        const contenu = italique ? para.slice(1, -1) : para;
-        return (
-          <p key={i} className={italique ? "text-xs text-muted italic" : para.trimStart().startsWith("- ") ? "pl-4" : ""}>
-            {contenu.split(/(\*\*[^*]+\*\*)/g).map((seg, j) =>
-              seg.startsWith("**") ? <strong key={j}>{seg.slice(2, -2)}</strong> : <span key={j}>{seg}</span>,
-            )}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
-
+/**
+ * Espace de travail complet d'Ora : le même agent que la bulle flottante
+ * (visible depuis toutes les pages), en plein écran pour un examen de dossier
+ * qui mérite plus de place. Les deux partagent la même conversation.
+ */
 export default function Ora() {
   const user = useUser();
   const dossiers = useDossiers();
   const [params] = useSearchParams();
-  const [dossierId, setDossierId] = useState(params.get("dossier") ?? "");
+  const { dossierId, messages, partiel, enCours } = useOraConversation();
   const [question, setQuestion] = useState("");
-  const [messages, setMessages] = useState<OraMessage[]>([]);
-  const [partiel, setPartiel] = useState("");
-  const [enCours, setEnCours] = useState(false);
-  const abort = useRef<AbortController | null>(null);
   const bas = useRef<HTMLDivElement>(null);
+
+  /* Un lien « Vérifier avec Ora » depuis le registre présélectionne son dossier. */
+  useEffect(() => {
+    const d = params.get("dossier");
+    if (d) definirDossierOra(d);
+  }, [params]);
 
   useEffect(() => {
     bas.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, partiel]);
-  useEffect(() => () => abort.current?.abort(), []);
 
   const dossier = dossiers.find((d) => d.id === dossierId) ?? null;
   const calc = dossier ? delaiDuDossier(dossier) : null;
-
-  async function envoyer(texte: string) {
-    const q = texte.trim();
-    if (!q || enCours) return;
-    const historique = messages;
-    setMessages((m) => [...m, { role: "user", content: q }]);
-    setQuestion("");
-    setPartiel("");
-    setEnCours(true);
-    abort.current = new AbortController();
-    try {
-      const rep = await demanderOra(q, dossier, historique, {
-        signal: abort.current.signal,
-        onText: (t) => setPartiel(t),
-      });
-      setMessages((m) => [...m, rep]);
-    } catch (err) {
-      const e = err as { name?: string; code?: string; message?: string };
-      if (e.name !== "AbortError" && e.code !== "cancelled") {
-        setMessages((m) => [
-          ...m,
-          { role: "ora", content: `Je n'ai pas pu traiter votre demande : ${e.message ?? "erreur inconnue"}.`, moteur: "local" },
-        ]);
-      }
-    } finally {
-      setPartiel("");
-      setEnCours(false);
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -111,7 +64,7 @@ export default function Ora() {
       <div className="grid lg:grid-cols-[320px_1fr] gap-6">
         <div className="space-y-6">
           <Section title="Dossier à examiner">
-            <select className="field" value={dossierId} onChange={(e) => setDossierId(e.target.value)} aria-label="Dossier">
+            <select className="field" value={dossierId} onChange={(e) => definirDossierOra(e.target.value)} aria-label="Dossier">
               <option value="">— Aucun (question générale) —</option>
               {dossiers.map((d) => (
                 <option key={d.id} value={d.id}>
@@ -147,12 +100,7 @@ export default function Ora() {
             <ul className="space-y-1.5">
               {ORA_SUGGESTIONS.map((s) => (
                 <li key={s}>
-                  <button
-                    type="button"
-                    className="btn-liste"
-                    disabled={enCours}
-                    onClick={() => envoyer(s)}
-                  >
+                  <button type="button" className="btn-liste" disabled={enCours} onClick={() => envoyerOra(s, dossier)}>
                     {s}
                   </button>
                 </li>
@@ -165,7 +113,7 @@ export default function Ora() {
           title="Conversation"
           aside={
             messages.length > 0 && (
-              <button type="button" className="btn-sm" disabled={enCours} onClick={() => setMessages([])}>
+              <button type="button" className="btn-sm" disabled={enCours} onClick={nouvelleConversationOra}>
                 Nouvelle conversation
               </button>
             )
@@ -201,7 +149,7 @@ export default function Ora() {
                       {m.moteur ? ` · ${MOTEUR_LABELS[m.moteur]}` : ""}
                     </p>
                     <div className="border border-ink/35 bg-card px-4 py-3">
-                      <Rendu text={m.content} />
+                      <OraRendu text={m.content} />
                     </div>
                   </div>
                 </div>
@@ -214,7 +162,7 @@ export default function Ora() {
                 <div className="max-w-[90%]">
                   <p className="label-caps text-[9px] text-muted mb-1">{ORA.nom}</p>
                   <div className="border border-ink/35 bg-card px-4 py-3">
-                    {partiel ? <Rendu text={partiel} /> : <p className="text-sm text-muted">Instruction en cours…</p>}
+                    {partiel ? <OraRendu text={partiel} /> : <p className="text-sm text-muted">Instruction en cours…</p>}
                   </div>
                 </div>
               </div>
@@ -225,7 +173,9 @@ export default function Ora() {
           <form
             onSubmit={(e: FormEvent) => {
               e.preventDefault();
-              envoyer(question);
+              if (!question.trim()) return;
+              envoyerOra(question, dossier);
+              setQuestion("");
             }}
             className="mt-4 flex gap-2"
           >
@@ -237,7 +187,7 @@ export default function Ora() {
               aria-label="Votre question"
             />
             {enCours ? (
-              <button type="button" className="btn-ghost shrink-0" onClick={() => abort.current?.abort()}>
+              <button type="button" className="btn-ghost shrink-0" onClick={interrompreOra}>
                 Interrompre
               </button>
             ) : (

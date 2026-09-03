@@ -195,16 +195,6 @@ export function withEvent(d: Dossier, auteur: string, action: string): Dossier {
   return { ...d, historique: [...d.historique, { date: new Date().toISOString(), auteur, action }] };
 }
 
-export function nextReference(): string {
-  const year = new Date().getFullYear();
-  const nums = dossiers
-    .map((d) => d.reference.match(/(\d{4})$/)?.[1])
-    .filter(Boolean)
-    .map(Number);
-  const n = (nums.length ? Math.max(...nums) : 0) + 1;
-  return `DRC/SA/${year}/${String(n).padStart(4, "0")}`;
-}
-
 /* ------------------------------------------------------------------ */
 /* Import / export CSV (conservation de l'import tableur)               */
 /* ------------------------------------------------------------------ */

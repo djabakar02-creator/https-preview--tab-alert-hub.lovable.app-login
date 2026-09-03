@@ -1,5 +1,5 @@
 import { diffDays, parseISODate, toISODate } from "./dates";
-import { delaiDuDossier, NIVEAU_LABELS, type Niveau } from "./delais";
+import { delaiDuDossier, NIVEAU_LABELS, type CalculDelai, type Niveau } from "./delais";
 import { STATUT_LABELS, TYPE_LABELS, type Dossier, type Statut, type TypeDossier } from "./dossiers";
 
 /**
@@ -29,10 +29,19 @@ export interface LigneType {
 
 export interface LigneAnalyste {
   analyste: string;
+  /* Charge actuelle : dossiers encore ouverts. */
   enCours: number;
   urgents: number;
   depasses: number;
   delaiMin: number | null;
+  /* Performance : dossiers clos (validés ou rejetés) dans le périmètre. */
+  traites: number;
+  valides: number;
+  rejetes: number;
+  /** Délai moyen de traitement, réception → clôture, en jours (null si aucune clôture datée). */
+  delaiTraitementMoyen: number | null;
+  /** Part des dossiers clos dont la clôture est intervenue dans le délai réglementaire (null si aucune clôture datée). */
+  tauxDansLesDelais: number | null;
 }
 
 export interface LigneDevise {
@@ -86,6 +95,17 @@ function mediane(valeurs: number[]): number | null {
 const moyenne = (v: number[]): number | null => (v.length ? Math.round(v.reduce((a, b) => a + b, 0) / v.length) : null);
 const part = (n: number, total: number) => (total ? Math.round((n / total) * 100) : 0);
 
+/**
+ * Date de clôture d'un dossier (validation ou rejet), retrouvée dans son
+ * historique. Un dossier clos sans cet événement — importé déjà clos, par
+ * exemple — n'entre pas dans les moyennes de délai de traitement : mieux
+ * vaut une donnée absente qu'une date supposée.
+ */
+function dateCloture(d: Dossier): string | null {
+  const ev = [...d.historique].reverse().find((h) => h.action === "Validation du dossier" || h.action === "Rejet du dossier");
+  return ev ? toISODate(new Date(ev.date)) : null;
+}
+
 export function construireRapport(
   dossiers: Dossier[],
   perimetre = "Registre complet",
@@ -119,12 +139,26 @@ export function construireRapport(
   );
   const parAnalyste: LigneAnalyste[] = analystes.map((a) => {
     const siens = enCours.filter((x) => x.d.analyste === a);
+    const clos = calc.filter((x) => EST_CLOS(x.d.statut) && x.d.analyste === a);
+    /* Le délai de traitement se juge à la date de clôture, pas à aujourd'hui :
+       un dossier validé il y a six mois n'est pas « en retard » pour autant. */
+    const auCloture = clos
+      .map((x) => {
+        const dc = dateCloture(x.d);
+        return dc ? { d: x.d, dc, c: delaiDuDossier(x.d, dc) } : null;
+      })
+      .filter((x): x is { d: Dossier; dc: string; c: CalculDelai } => x !== null);
     return {
       analyste: a ?? "Non attribué",
       enCours: siens.length,
       urgents: siens.filter((x) => x.c.niveau === "urgent").length,
       depasses: siens.filter((x) => x.c.niveau === "depasse").length,
       delaiMin: siens.length ? Math.min(...siens.map((x) => x.c.delaiRestant)) : null,
+      traites: clos.length,
+      valides: clos.filter((x) => x.d.statut === "valide").length,
+      rejetes: clos.filter((x) => x.d.statut === "rejete").length,
+      delaiTraitementMoyen: moyenne(auCloture.map((x) => diffDays(x.d.dateReception, x.dc))),
+      tauxDansLesDelais: auCloture.length ? part(auCloture.filter((x) => x.c.delaiRestant >= 0).length, auCloture.length) : null,
     };
   });
 

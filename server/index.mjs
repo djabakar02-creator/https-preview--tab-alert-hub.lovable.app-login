@@ -21,8 +21,10 @@ import { extname, join, normalize, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { randomBytes } from "node:crypto";
 import { SYSTEM_ORA } from "../shared/ora-persona.mjs";
-import { annuaireDemonstration, authentifier, cookieSession, lireCookie, signerSession, verifierSession } from "./comptes.mjs";
+import { creerAnnuaire } from "./annuaire.mjs";
+import { authentifier, cookieSession, lireCookie, signerSession, verifierSession } from "./comptes.mjs";
 import { construireRequete, ErreurRequete, lireReponse, messageErreur, validerCorps } from "./ora.mjs";
+import { creerParametres } from "./parametres.mjs";
 import { creerRegistre } from "./registre.mjs";
 
 const DELAI_MS = 30_000;
@@ -41,6 +43,10 @@ export function confDepuisEnvironnement(env = process.env) {
     racine: env.ORA_RACINE || resolve(process.cwd(), "dist"),
     /* Registre partagé : un fichier, sur le serveur, commun à tous les agents. */
     donnees: env.ORA_DONNEES || resolve(process.cwd(), "donnees", "registre.json"),
+    /* Annuaire des comptes et délais réglementaires par défaut : mêmes garanties
+       que le registre (fichier JSON, écriture atomique), à côté de lui. */
+    donneesComptes: env.ORA_DONNEES_COMPTES || resolve(process.cwd(), "donnees", "comptes.json"),
+    donneesParametres: env.ORA_DONNEES_PARAMETRES || resolve(process.cwd(), "donnees", "parametres.json"),
     /* Secret de signature des sessions. Sans valeur fixe, les sessions ne
        survivent pas à un redémarrage : à définir en production. */
     secret: env.ORA_SECRET || "",
@@ -100,8 +106,9 @@ export function creerServeur(conf = {}) {
   const CONF = { ...confDepuisEnvironnement(), ...conf };
   const RACINE = resolve(CONF.racine);
   const compteurs = new Map();
-  const annuaire = conf.annuaire ?? annuaireDemonstration();
+  const annuaire = conf.annuaire ?? creerAnnuaire(CONF.donneesComptes);
   const registre = creerRegistre(CONF.donnees);
+  const parametres = conf.parametres ?? creerParametres(CONF.donneesParametres);
   const SECRET = CONF.secret || randomBytes(32).toString("hex");
   if (!CONF.secret) console.warn("[ora] ORA_SECRET non défini : les sessions ouvertes seront perdues au redémarrage.");
 
@@ -167,7 +174,7 @@ export function creerServeur(conf = {}) {
     if (tropDeRequetes(`login:${ip}`)) return repondre(res, 429, { erreur: "Trop de tentatives. Patientez une minute." });
 
     const { username, motDePasse } = await lireCorps(req);
-    const u = authentifier(annuaire, username, motDePasse);
+    const u = authentifier(annuaire.map(), username, motDePasse);
     if (!u) return repondre(res, 401, { erreur: "Identifiant ou mot de passe incorrect." });
     return repondre(res, 200, u, { "Set-Cookie": cookieSession(signerSession(SECRET, u), CONF.securise) });
   }
@@ -192,6 +199,36 @@ export function creerServeur(conf = {}) {
     }
     if (methode === "POST" && chemin === "/api/dossiers/reinitialiser") {
       return repondre(res, 200, { dossiers: registre.reinitialiser(u) });
+    }
+    return repondre(res, 405, { erreur: "Méthode non autorisée." });
+  }
+
+  async function traiterComptes(req, res, chemin, methode) {
+    const u = exiger(req);
+    const username = chemin.startsWith("/api/comptes/") ? decodeURIComponent(chemin.slice("/api/comptes/".length)) : null;
+
+    if (methode === "GET" && !username) return repondre(res, 200, { comptes: annuaire.lister() });
+    if (methode === "POST" && !username) return repondre(res, 200, annuaire.creer(u, await lireCorps(req)));
+    if (methode === "PATCH" && username) return repondre(res, 200, annuaire.modifier(u, username, await lireCorps(req)));
+    if (methode === "DELETE" && username) {
+      annuaire.supprimer(u, username);
+      return repondre(res, 200, { supprime: username });
+    }
+    return repondre(res, 405, { erreur: "Méthode non autorisée." });
+  }
+
+  async function traiterParametres(req, res, chemin, methode) {
+    const u = exiger(req);
+    if (methode === "GET" && chemin === "/api/parametres") {
+      return repondre(res, 200, {
+        delais: parametres.delais(),
+        historiqueComptes: annuaire.historique(),
+        historiqueDelais: parametres.historique(),
+      });
+    }
+    if (methode === "PUT" && chemin.startsWith("/api/parametres/delais/")) {
+      const type = decodeURIComponent(chemin.slice("/api/parametres/delais/".length));
+      return repondre(res, 200, parametres.modifierDelai(u, type, await lireCorps(req)));
     }
     return repondre(res, 405, { erreur: "Méthode non autorisée." });
   }
@@ -240,6 +277,12 @@ export function creerServeur(conf = {}) {
       if (chemin === "/api/session") return await traiterSession(req, res, req.method);
       if (chemin === "/api/dossiers" || chemin.startsWith("/api/dossiers/")) {
         return await traiterDossiers(req, res, chemin, req.method);
+      }
+      if (chemin === "/api/comptes" || chemin.startsWith("/api/comptes/")) {
+        return await traiterComptes(req, res, chemin, req.method);
+      }
+      if (chemin === "/api/parametres" || chemin.startsWith("/api/parametres/")) {
+        return await traiterParametres(req, res, chemin, req.method);
       }
       if (chemin === "/api/ora") {
         if (req.method !== "POST") return repondre(res, 405, { erreur: "Méthode non autorisée." }, { Allow: "POST" });

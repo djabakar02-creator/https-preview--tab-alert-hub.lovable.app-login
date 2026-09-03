@@ -1,4 +1,5 @@
 import { api, detecterMode, ErreurApi } from "./api";
+import { comptesLocaux } from "./parametres";
 
 export type Role = "admin" | "hierarchie" | "analyste" | "lecture";
 
@@ -13,8 +14,11 @@ interface Account extends User {
 }
 
 /**
- * Comptes de démonstration. En production, remplacer par une authentification
- * serveur (les mots de passe ne doivent jamais être embarqués côté client).
+ * Comptes de démonstration affichés sur l'écran de connexion, tels qu'au
+ * premier lancement. L'authentification hors ligne, elle, consulte l'annuaire
+ * réel (comptesLocaux(), src/lib/parametres.ts), que l'administrateur peut
+ * modifier depuis l'onglet Paramètres — ce tableau ne le reflète pas après
+ * modification, il documente seulement les identifiants de départ.
  */
 export const DEMO_ACCOUNTS: Account[] = [
   { username: "admin", password: "admin123", displayName: "Administrateur", role: "admin" },
@@ -65,7 +69,7 @@ export async function sessionCourante(): Promise<User | null> {
 }
 
 export function authenticate(username: string, password: string): User | null {
-  const account = DEMO_ACCOUNTS.find(
+  const account = comptesLocaux().find(
     (a) => a.username === username.trim().toLowerCase() && a.password === password,
   );
   if (!account) return null;

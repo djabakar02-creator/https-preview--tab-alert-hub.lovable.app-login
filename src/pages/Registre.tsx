@@ -1,15 +1,12 @@
 import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useUser } from "../App";
-import { DEMO_ACCOUNTS } from "../lib/auth";
 import { formatDateFR, formatDateTimeFR, toISODate } from "../lib/dates";
 import { delaiDuDossier, NIVEAU_LABELS, type Niveau } from "../lib/delais";
 import {
-  DELAI_PAR_TYPE,
   DELAIS,
   fromCSV,
   newId,
-  nextReference,
   piecesRequises,
   removeDossier,
   replaceAll,
@@ -26,6 +23,7 @@ import {
   type TypeDossier,
 } from "../lib/dossiers";
 import { can } from "../lib/permissions";
+import { useComptes, useDelais } from "../lib/parametres";
 import { correspond, ecrireTypes, lireTypes } from "../lib/filtres";
 import { Empty, estClos, fmtMontant, Modal, NiveauBadge, StatutBadge } from "../components/ui";
 import { rafraichirRegistre } from "../lib/dossiers";
@@ -50,26 +48,31 @@ async function ecrire(action: () => Promise<void>, signaler: (m: string) => void
 
 const TYPE_DEFAUT: TypeDossier = "immobilier_hors_cemac";
 
-const ANALYSTES = DEMO_ACCOUNTS.filter((a) => a.role === "analyste" || a.role === "hierarchie" || a.role === "admin");
-
 /* ------------------------------------------------------------------ */
 /* Formulaire création / édition                                        */
 /* ------------------------------------------------------------------ */
 
 function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: () => void }) {
   const user = useUser();
+  const dossiers = useDossiers();
+  /* Le circuit d'attribution puise dans l'annuaire réel : un compte créé ou
+     retiré depuis l'onglet Paramètres apparaît ici sans rien recompiler. */
+  const analystes = useComptes().filter((c) => c.role === "analyste" || c.role === "hierarchie" || c.role === "admin");
+  /* Délais réglementaires par défaut : ceux que l'administrateur a fixés
+     (onglet Paramètres), pas la valeur figée dans le code. */
+  const delaisParType = useDelais();
   const today = toISODate(new Date());
   const [f, setF] = useState<Dossier>(
     initial ?? {
       id: newId(),
-      reference: nextReference(),
+      reference: "",
       demandeur: "",
       type: TYPE_DEFAUT,
       sousType: null,
       montant: 0,
       devise: "XAF",
       dateReception: today,
-      delaiReglementaire: DELAI_PAR_TYPE[TYPE_DEFAUT],
+      delaiReglementaire: delaisParType[TYPE_DEFAUT].jours,
       analyste: user.role === "analyste" ? user.username : null,
       statut: "en_instruction",
       pieces: piecesRequises(TYPE_DEFAUT),
@@ -88,7 +91,7 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
       type,
       /* La sous-catégorie appartient au type : elle ne survit pas au changement. */
       sousType: SOUS_TYPES[type]?.[0] ?? null,
-      delaiReglementaire: DELAI_PAR_TYPE[type],
+      delaiReglementaire: delaisParType[type].jours,
       pieces: initial && initial.type === type ? initial.pieces : piecesRequises(type),
     }));
   }
@@ -99,7 +102,10 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
     e.preventDefault();
     if (envoi) return;
     const errs: string[] = [];
-    if (!f.reference.trim()) errs.push("La référence est obligatoire.");
+    const reference = f.reference.trim();
+    if (!reference) errs.push("La référence est obligatoire : reportez celle du courrier reçu.");
+    else if (dossiers.some((d) => d.id !== f.id && d.reference.trim().toLowerCase() === reference.toLowerCase()))
+      errs.push(`La référence « ${reference} » est déjà attribuée à un autre dossier du registre.`);
     if (!f.demandeur.trim()) errs.push("Le demandeur est obligatoire.");
     if (!/^\d{4}-\d{2}-\d{2}$/.test(f.dateReception)) errs.push("La date de réception est invalide.");
     else if (f.dateReception > today) errs.push("La date de réception ne peut pas être postérieure à aujourd'hui.");
@@ -125,11 +131,18 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
       <form onSubmit={submit} className="grid md:grid-cols-2 gap-4" noValidate>
         <label className="block">
           <span className="label-caps text-[10px] block mb-1">Référence</span>
-          <input className="field font-mono" value={f.reference} onChange={(e) => set("reference", e.target.value)} />
+          <input
+            className="field font-mono"
+            value={f.reference}
+            onChange={(e) => set("reference", e.target.value)}
+            placeholder="Réf. du courrier reçu — ex. DRC/SA/2026/0050"
+            autoFocus={!initial}
+          />
+          {!initial && <p className="text-xs text-muted mt-1">À reporter du courrier correspondant : elle n'est pas générée automatiquement.</p>}
         </label>
         <label className="block">
           <span className="label-caps text-[10px] block mb-1">Demandeur</span>
-          <input className="field" value={f.demandeur} onChange={(e) => set("demandeur", e.target.value)} autoFocus />
+          <input className="field" value={f.demandeur} onChange={(e) => set("demandeur", e.target.value)} autoFocus={Boolean(initial)} />
         </label>
         <label className="block">
           <span className="label-caps text-[10px] block mb-1">Type de demande</span>
@@ -196,8 +209,8 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
           <NiveauBadge niveau={calc.niveau} />
           <span className="text-muted text-xs w-full">
             Calculé automatiquement : date du jour − date de réception
-            {DELAIS[f.type].ouvres ? ", en jours ouvrés" : ""}. Non modifiable.
-            {DELAIS[f.type].source === "defaut" && (
+            {delaisParType[f.type].ouvres ? ", en jours ouvrés" : ""}. Non modifiable.
+            {delaisParType[f.type].source === "defaut" && (
               <strong className="text-rouge"> Délai réglementaire à confirmer par le service.</strong>
             )}
           </span>
@@ -207,7 +220,7 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
             <span className="label-caps text-[10px] block mb-1">Analyste traitant</span>
             <select className="field" value={f.analyste ?? ""} onChange={(e) => set("analyste", e.target.value || null)}>
               <option value="">— Non attribué —</option>
-              {ANALYSTES.map((a) => (
+              {analystes.map((a) => (
                 <option key={a.username} value={a.username}>
                   {a.username} · {a.displayName}
                 </option>
@@ -281,6 +294,7 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
 /* ------------------------------------------------------------------ */
 
 function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => void; onEdit: () => void; signaler: (m: string) => void }) {
+  const analystes = useComptes().filter((c) => c.role === "analyste" || c.role === "hierarchie" || c.role === "admin");
   const user = useUser();
   const navigate = useNavigate();
   const c = delaiDuDossier(d);
@@ -382,7 +396,7 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
               <div className="flex gap-1">
                 <select className="field" value={reassign} onChange={(e) => setReassign(e.target.value)}>
                   <option value="">— Non attribué —</option>
-                  {ANALYSTES.map((a) => (
+                  {analystes.map((a) => (
                     <option key={a.username} value={a.username}>
                       {a.username}
                     </option>
@@ -528,6 +542,7 @@ function ImportModal({ onClose, signaler }: { onClose: () => void; signaler: (m:
 export default function Registre() {
   const user = useUser();
   const dossiers = useDossiers();
+  const analystes = useComptes().filter((c) => c.role === "analyste" || c.role === "hierarchie" || c.role === "admin");
   const navigate = useNavigate();
   const { id } = useParams();
   const [params, setParams] = useSearchParams();
@@ -640,7 +655,7 @@ export default function Registre() {
           <option value="__tous">Tous les analystes</option>
           <option value="__mine">Mes dossiers</option>
           <option value="__none">Non attribués</option>
-          {ANALYSTES.map((a) => (
+          {analystes.map((a) => (
             <option key={a.username} value={a.username}>
               {a.username}
             </option>

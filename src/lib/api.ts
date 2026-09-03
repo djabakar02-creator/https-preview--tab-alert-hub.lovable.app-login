@@ -1,5 +1,6 @@
 import type { User } from "./auth";
-import type { Dossier } from "./dossiers";
+import type { Dossier, TypeDossier } from "./dossiers";
+import type { Compte, DelaiParType, EntreeHistorique, RoleCompte } from "./parametres";
 
 /**
  * Accès au service. L'application fonctionne dans deux modes :
@@ -64,4 +65,24 @@ export const api = {
     ),
   reinitialiser: () =>
     json<{ dossiers: Dossier[] }>("/api/dossiers/reinitialiser", { method: "POST" }).then((r) => r.dossiers),
+
+  listerComptes: () => json<{ comptes: Compte[] }>("/api/comptes").then((r) => r.comptes),
+  creerCompte: (c: { username: string; displayName: string; role: RoleCompte; motDePasse: string }) =>
+    json<Compte>("/api/comptes", { method: "POST", body: JSON.stringify(c) }),
+  modifierCompte: (username: string, c: { displayName?: string; role?: RoleCompte; motDePasse?: string }) =>
+    json<Compte>(`/api/comptes/${encodeURIComponent(username)}`, { method: "PATCH", body: JSON.stringify(c) }),
+  supprimerCompte: (username: string) =>
+    json<{ supprime: string }>(`/api/comptes/${encodeURIComponent(username)}`, { method: "DELETE" }),
+
+  parametres: () =>
+    json<{
+      delais: Record<TypeDossier, DelaiParType>;
+      historiqueComptes: EntreeHistorique[];
+      historiqueDelais: EntreeHistorique[];
+    }>("/api/parametres"),
+  definirDelai: (type: TypeDossier, d: { jours: number; ouvres: boolean }) =>
+    json<DelaiParType>(`/api/parametres/delais/${encodeURIComponent(type)}`, {
+      method: "PUT",
+      body: JSON.stringify(d),
+    }),
 };

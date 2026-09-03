@@ -5,7 +5,7 @@ import { TYPE_COURT, TYPE_LABELS, toCSV, useDossiers, type TypeDossier } from ".
 import { ecrireTypes, lireTypes } from "../lib/filtres";
 import { construireRapport, type Rapport } from "../lib/rapport";
 import { Section } from "../components/ui";
-import { telechargerFichier } from "../lib/telechargement";
+import { telechargerFichier, type CanalTelechargement } from "../lib/telechargement";
 
 /* Couleurs de statut, réservées aux niveaux de délai : elles ne servent jamais
    de teintes de série. Chaque barre porte aussi son intitulé, donc l'information
@@ -117,20 +117,36 @@ export default function Rapports() {
     setTimeout(() => setMessage(null), 5000);
   }
 
+  /* Le classeur XLSX n'est pas dans la liste des extensions que l'aperçu
+     Claude autorise à télécharger : on le signale plutôt que de tenter un
+     lien qui n'y aboutirait à rien. */
+  function messageCanal(canal: CanalTelechargement, format: "pdf" | "xlsx" | "csv", nom: string): string {
+    switch (canal) {
+      case "refus":
+        return "Export annulé.";
+      case "format_indisponible":
+        return format === "xlsx"
+          ? "Le format XLSX n'est pas proposé par cet aperçu Claude. Utilisez le CSV, ou ouvrez l'application installée pour le classeur complet."
+          : "Ce format n'est pas proposé par cet aperçu Claude. Ouvrez l'application installée pour l'obtenir.";
+      default:
+        return format === "csv" ? `Registre exporté : ${nom}` : `Synthèse ${format.toUpperCase()} exportée (${retenus.length} dossier(s)).`;
+    }
+  }
+
   async function exporter(format: "pdf" | "xlsx" | "csv") {
     if (enCoursExport) return;
     setEnCoursExport(format);
     try {
+      let canal: CanalTelechargement;
+      let nom = "";
       if (format === "csv") {
-        const nom = `registre-drc-${new Date().toISOString().slice(0, 10)}.csv`;
-        const canal = await telechargerFichier(nom, "﻿" + toCSV(retenus));
-        annoncer(canal === "refus" ? "Export annulé." : `Registre exporté : ${nom}`);
+        nom = `registre-drc-${new Date().toISOString().slice(0, 10)}.csv`;
+        canal = await telechargerFichier(nom, "﻿" + toCSV(retenus));
       } else {
         const doc = await import("../lib/export-documents");
-        if (format === "pdf") await doc.exporterPDF(rapport, retenus);
-        else await doc.exporterXLSX(rapport, retenus);
-        annoncer(`Synthèse ${format.toUpperCase()} exportée (${retenus.length} dossier(s)).`);
+        canal = format === "pdf" ? await doc.exporterPDF(rapport, retenus) : await doc.exporterXLSX(rapport, retenus);
       }
+      annoncer(messageCanal(canal, format, nom));
     } catch (e) {
       annoncer(`Export impossible : ${e instanceof Error ? e.message : "erreur inconnue"}.`);
     } finally {
@@ -345,6 +361,63 @@ export default function Rapports() {
             </tbody>
           </table>
         </div>
+      </Section>
+
+      <Section
+        title="Performance par analyste (dossiers clos)"
+        aside={<span className="label-caps text-[9px] text-muted">Réception → clôture</span>}
+      >
+        {rapport.parAnalyste.every((a) => a.traites === 0) ? (
+          <p className="text-sm text-muted italic py-4">Aucun dossier clos sur ce périmètre : rien à mesurer pour l'instant.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left label-caps text-[10px] border-b border-line bg-sand/60">
+                  <th className="px-3 py-2.5">Analyste</th>
+                  <th className="px-3 py-2.5 text-right">Traités</th>
+                  <th className="px-3 py-2.5 text-right">Validés</th>
+                  <th className="px-3 py-2.5 text-right">Rejetés</th>
+                  <th className="px-3 py-2.5 text-right">Délai moyen</th>
+                  <th className="px-3 py-2.5">Dans les délais réglementaires</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...rapport.parAnalyste]
+                  .filter((a) => a.traites > 0)
+                  .sort((a, b) => b.traites - a.traites)
+                  .map((a) => (
+                    <tr key={a.analyste} className="border-b border-hair hover:bg-sand/40">
+                      <td className="px-3 py-2.5 font-semibold">{a.analyste}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums font-bold">{a.traites}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums text-ok">{a.valides}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{a.rejetes ? <span className="text-rouge font-bold">{a.rejetes}</span> : <span className="text-muted">0</span>}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{a.delaiTraitementMoyen === null ? "—" : `${a.delaiTraitementMoyen} j`}</td>
+                      <td className="px-3 py-2.5">
+                        {a.tauxDansLesDelais === null ? (
+                          <span className="text-muted text-xs">—</span>
+                        ) : (
+                          <div className="flex items-center gap-2.5">
+                            <div className="flex-1 h-2 bg-sand border border-hair min-w-[60px] max-w-[160px]">
+                              <div
+                                className={a.tauxDansLesDelais >= 80 ? "h-full bg-ok" : a.tauxDansLesDelais >= 50 ? "h-full bg-attention" : "h-full bg-rouge"}
+                                style={{ width: `${a.tauxDansLesDelais}%` }}
+                              />
+                            </div>
+                            <span className="tabular-nums font-bold text-xs w-10 text-right">{a.tauxDansLesDelais} %</span>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="text-xs text-muted mt-3">
+          Délai moyen et respect des délais se mesurent à la date de clôture du dossier (validation ou rejet), jamais à la date du jour : un
+          dossier clos ancien ne pèse pas sur la charge actuelle.
+        </p>
       </Section>
     </div>
   );

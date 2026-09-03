@@ -123,6 +123,64 @@ describe("construireRapport — ventilations", () => {
   });
 });
 
+describe("construireRapport — performance par analyste", () => {
+  const cloture = (auteur: string, action: string, joursApresReception: number, dateReception: string) => ({
+    date: `${addDays(dateReception, joursApresReception)}T09:00:00.000Z`,
+    auteur,
+    action,
+  });
+
+  it("compte les dossiers clos séparément de la charge en cours", () => {
+    const recu = addDays(AUJ, -40);
+    const r = construireRapport(
+      [
+        d({ analyste: "analyste", statut: "en_instruction" }),
+        d({ analyste: "analyste", statut: "valide", dateReception: recu, historique: [cloture("hierarchie", "Validation du dossier", 12, recu)] }),
+        d({ analyste: "analyste", statut: "rejete", dateReception: recu, historique: [cloture("hierarchie", "Rejet du dossier", 20, recu)] }),
+      ],
+      "T",
+      AUJ,
+    );
+    const ligne = r.parAnalyste.find((a) => a.analyste === "analyste")!;
+    expect(ligne.enCours).toBe(1);
+    expect(ligne.traites).toBe(2);
+    expect(ligne.valides).toBe(1);
+    expect(ligne.rejetes).toBe(1);
+  });
+
+  it("calcule le délai de traitement réception → clôture, pas réception → aujourd'hui", () => {
+    const recu = addDays(AUJ, -200); // bien avant aujourd'hui : un calcul erroné le trahirait
+    const r = construireRapport(
+      [d({ analyste: "analyste", statut: "valide", dateReception: recu, historique: [cloture("hierarchie", "Validation du dossier", 18, recu)] })],
+      "T",
+      AUJ,
+    );
+    expect(r.parAnalyste[0].delaiTraitementMoyen).toBe(18);
+  });
+
+  it("mesure le respect du délai réglementaire au jour de la clôture", () => {
+    const recu = addDays(AUJ, -60);
+    const r = construireRapport(
+      [
+        // clos à J+12 sur un délai de 30 : dans les délais
+        d({ analyste: "a", statut: "valide", delaiReglementaire: 30, dateReception: recu, historique: [cloture("h", "Validation du dossier", 12, recu)] }),
+        // clos à J+45 sur un délai de 30 : dépassé
+        d({ analyste: "a", statut: "valide", delaiReglementaire: 30, dateReception: recu, historique: [cloture("h", "Validation du dossier", 45, recu)] }),
+      ],
+      "T",
+      AUJ,
+    );
+    expect(r.parAnalyste[0].tauxDansLesDelais).toBe(50);
+  });
+
+  it("exclut de la moyenne un dossier clos sans date de clôture retrouvée (import), sans planter", () => {
+    const r = construireRapport([d({ analyste: "a", statut: "valide", historique: [] })], "T", AUJ);
+    expect(r.parAnalyste[0].traites).toBe(1);
+    expect(r.parAnalyste[0].delaiTraitementMoyen).toBeNull();
+    expect(r.parAnalyste[0].tauxDansLesDelais).toBeNull();
+  });
+});
+
 describe("construireRapport — périmètre", () => {
   it("reprend le périmètre annoncé, pour que l'export dise ce qu'il montre", () => {
     const r = construireRapport([d()], "Transfert de fonds, Emprunt extérieur", AUJ);

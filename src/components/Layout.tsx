@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
+import { useUser } from "../App";
 import BarreSuperieure from "./BarreSuperieure";
+import OraFlottante from "./OraFlottante";
 
 /** Pictogrammes de la navigation : traits simples, dans la ligne graphique du registre. */
 const ICONES: Record<string, JSX.Element> = {
@@ -34,6 +36,12 @@ const ICONES: Record<string, JSX.Element> = {
       <path d="M10 3 A7 7 0 0 1 17 10" strokeWidth="2.4" />
     </>
   ),
+  parametres: (
+    <>
+      <circle cx="10" cy="10" r="3" />
+      <path d="M10 2v2.4M10 15.6V18M18 10h-2.4M4.4 10H2M15.5 4.5l-1.7 1.7M6.2 13.8l-1.7 1.7M15.5 15.5l-1.7-1.7M6.2 6.2 4.5 4.5" />
+    </>
+  ),
 };
 
 const LIENS = [
@@ -43,8 +51,13 @@ const LIENS = [
   { to: "/ora", label: "Ora", icone: "ora" },
 ];
 
+/* Réservé à l'administrateur : sécurité, comptes, circuits et délais. */
+const LIEN_PARAMETRES = { to: "/parametres", label: "Paramètres", icone: "parametres", end: false };
+
 export default function Layout() {
+  const user = useUser();
   const [ouvert, setOuvert] = useState(false);
+  const liens = user.role === "admin" ? [...LIENS, LIEN_PARAMETRES] : LIENS;
 
   return (
     <div className="min-h-screen bg-paper lg:grid lg:grid-cols-[240px_1fr]">
@@ -66,7 +79,7 @@ export default function Layout() {
           className={`${ouvert ? "block" : "hidden"} flex-1 border-t border-hair py-2 lg:block`}
           aria-label="Navigation principale"
         >
-          {LIENS.map((l) => (
+          {liens.map((l) => (
             <NavLink
               key={l.to}
               to={l.to}
@@ -110,6 +123,7 @@ export default function Layout() {
         <main className="w-full flex-1 px-4 py-7 lg:px-8">
           <Outlet />
         </main>
+        <OraFlottante />
         <footer className="border-t border-line px-4 py-3 lg:px-8">
           <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
             Usage réservé · Registre officiel des dossiers d'autorisation de change

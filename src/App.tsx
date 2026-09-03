@@ -2,12 +2,14 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { saveSession, seDeconnecter, sessionCourante, type User } from "./lib/auth";
 import { initialiserRegistre, rafraichirRegistre } from "./lib/dossiers";
+import { initialiserParametres, rafraichirParametres } from "./lib/parametres";
 import Layout from "./components/Layout";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Registre from "./pages/Registre";
 import Rapports from "./pages/Rapports";
 import Ora from "./pages/Ora";
+import Parametres from "./pages/Parametres";
 
 interface AuthCtx {
   user: User | null;
@@ -46,7 +48,7 @@ export default function App() {
     let vivant = true;
     void (async () => {
       const u = await sessionCourante().catch(() => null);
-      await initialiserRegistre(Boolean(u)).catch(() => {});
+      await Promise.all([initialiserRegistre(Boolean(u)), initialiserParametres(Boolean(u))]).catch(() => {});
       if (!vivant) return;
       setUser(u);
       setPret(true);
@@ -60,6 +62,7 @@ export default function App() {
     saveSession(u);
     setUser(u);
     void rafraichirRegistre().catch(() => {});
+    void rafraichirParametres().catch(() => {});
   }, []);
   const logout = useCallback(() => {
     void seDeconnecter();
@@ -91,6 +94,7 @@ export default function App() {
           <Route path="registre/:id" element={<Registre />} />
           <Route path="rapports" element={<Rapports />} />
           <Route path="ora" element={<Ora />} />
+          <Route path="parametres" element={<Parametres />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

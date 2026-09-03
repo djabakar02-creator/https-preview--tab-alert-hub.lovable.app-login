@@ -2,7 +2,7 @@ import { formatClock, formatDateFR, formatEdition, formatLongDateFR } from "./da
 import { delaiDuDossier, NIVEAU_LABELS } from "./delais";
 import { STATUT_LABELS, TYPE_LABELS, type Dossier } from "./dossiers";
 import type { Rapport } from "./rapport";
-import { telechargerFichier } from "./telechargement";
+import { telechargerFichier, type CanalTelechargement } from "./telechargement";
 
 /**
  * Documents remis aux agents : synthèse PDF et classeur tableur.
@@ -20,7 +20,7 @@ const SABLE = "#ECE5D9";
 
 /* jsPDF encode en WinAnsi : les tirets longs et les espaces fines insécables
    n'y figurent pas et sortiraient en caractères parasites. */
-const pourPDF = (s: string) => s.replace(/[‑–—]/g, "-").replace(/[  ]/g, " ");
+const pourPDF = (s: string) => s.replace(/[‑–—]/g, "-").replace(/→/g, "->").replace(/[  ]/g, " ");
 /* toLocaleString produit une espace fine insécable, que l'encodage WinAnsi de
    jsPDF rend « / ». On la ramène à une espace ordinaire. */
 const nombre = (n: number) => n.toLocaleString("fr-FR").replace(/[\u202F\u00A0]/g, " ");
@@ -57,7 +57,7 @@ function lignesRegistre(dossiers: Dossier[]) {
 /* PDF                                                                  */
 /* ------------------------------------------------------------------ */
 
-export async function exporterPDF(rapport: Rapport, dossiers: Dossier[]): Promise<void> {
+export async function exporterPDF(rapport: Rapport, dossiers: Dossier[]): Promise<CanalTelechargement> {
   const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([import("jspdf"), import("jspdf-autotable")]);
 
   const doc = new jsPDF({ unit: "mm", format: "a4" });
@@ -137,7 +137,7 @@ export async function exporterPDF(rapport: Rapport, dossiers: Dossier[]): Promis
        jambages des lettres. */
     doc.setDrawColor(ROUGE).setLineWidth(0.7).line(M, y - 3.4, M + 14, y - 3.4);
     doc.setFont("helvetica", "bold").setFontSize(9).setTextColor(ENCRE);
-    doc.text(texte, M, y);
+    doc.text(pourPDF(texte), M, y);
   };
 
   const finTable = () => (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY;
@@ -198,6 +198,37 @@ export async function exporterPDF(rapport: Rapport, dossiers: Dossier[]): Promis
     ]),
     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
   });
+
+  const traites = rapport.parAnalyste.filter((a) => a.traites > 0);
+  if (traites.length) {
+    y = finTable() + 12;
+    titre("Performance par analyste (dossiers clos, réception → clôture)", traites.length);
+    autoTable(doc, {
+      ...styleTable,
+      startY: y + 4,
+      rowPageBreak: "avoid" as const,
+      head: [["Analyste", "Traités", "Validés", "Rejetés", "Délai moyen", "Dans les délais"]],
+      body: traites.map((a) => [
+        a.analyste,
+        nombre(a.traites),
+        nombre(a.valides),
+        nombre(a.rejetes),
+        a.delaiTraitementMoyen === null ? "—" : `${a.delaiTraitementMoyen} j`,
+        a.tauxDansLesDelais === null ? "—" : `${a.tauxDansLesDelais} %`,
+      ]),
+      columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } },
+      /* Un taux de respect des délais faible doit sauter aux yeux, ici comme
+         à l'écran. */
+      didParseCell: (data) => {
+        if (data.section !== "body" || data.column.index !== 5) return;
+        const brut = Number(String(data.cell.raw ?? "").replace(/[^\d.-]/g, ""));
+        if (Number.isFinite(brut) && brut < 50) {
+          data.cell.styles.textColor = ROUGE;
+          data.cell.styles.fontStyle = "bold";
+        }
+      },
+    });
+  }
 
   if (rapport.parDevise.length) {
     y = finTable() + 12;
@@ -268,7 +299,7 @@ export async function exporterPDF(rapport: Rapport, dossiers: Dossier[]): Promis
     doc.text(`${p} / ${pages}`, L - M, H - 8, { align: "right" });
   }
 
-  await telechargerFichier(nomFichier("pdf"), doc.output("blob"), "application/pdf");
+  return telechargerFichier(nomFichier("pdf"), doc.output("blob"), "application/pdf");
 }
 
 /* ------------------------------------------------------------------ */
@@ -313,7 +344,7 @@ function bandeau(f: Feuille, titre: string, sousTitre: string, colonnes: number)
   f.getRow(4).height = 6;
 }
 
-export async function exporterXLSX(rapport: Rapport, dossiers: Dossier[]): Promise<void> {
+export async function exporterXLSX(rapport: Rapport, dossiers: Dossier[]): Promise<CanalTelechargement> {
   const ExcelJS = await import("exceljs");
   const classeur = new ExcelJS.Workbook();
   classeur.creator = "BEAC · Direction de la Réglementation des Changes";
@@ -364,6 +395,7 @@ export async function exporterXLSX(rapport: Rapport, dossiers: Dossier[]): Promi
     }
   }
 
+  /** Écrit un bloc titré ; renvoie la plage de lignes de données, pour une mise en forme conditionnelle éventuelle. */
   const bloc = <T,>(titre: string, colonnes: string[], lignes: T[], valeurs: (x: T) => (string | number)[]) => {
     l += 2;
     const t = synthese.getCell(l, 1);
@@ -371,6 +403,7 @@ export async function exporterXLSX(rapport: Rapport, dossiers: Dossier[]): Promi
     t.font = { bold: true, size: 11, color: { argb: HEX(ENCRE) }, name: "Calibri" };
     l += 1;
     enTete(synthese, l++, colonnes);
+    const debut = l;
     for (const x of lignes) {
       const r = synthese.getRow(l++);
       valeurs(x).forEach((v, i) => {
@@ -382,6 +415,7 @@ export async function exporterXLSX(rapport: Rapport, dossiers: Dossier[]): Promi
         for (let c = 1; c <= colonnes.length; c++) r.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: HEX(PAPIER) } };
       }
     }
+    return { debut, fin: l - 1 };
   };
 
   bloc("Par niveau de délai (dossiers en cours)", ["Niveau", "Dossiers", "Part (%)"], rapport.parNiveau, (n) => [n.libelle, n.nombre, n.part]);
@@ -392,13 +426,46 @@ export async function exporterXLSX(rapport: Rapport, dossiers: Dossier[]): Promi
     rapport.parType,
     (t) => [t.libelle, t.total, t.enCours, t.clos, t.delaiMoyen ?? "—", t.urgents, t.depasses, t.completude],
   );
-  bloc("Charge par analyste", ["Analyste", "En cours", "Urgents", "Dépassés", "Délai le plus court (j)"], rapport.parAnalyste, (a) => [
+  bloc("Charge par analyste (dossiers en cours)", ["Analyste", "En cours", "Urgents", "Dépassés", "Délai le plus court (j)"], rapport.parAnalyste, (a) => [
     a.analyste,
     a.enCours,
     a.urgents,
     a.depasses,
     a.delaiMin ?? "—",
   ]);
+
+  const traites = rapport.parAnalyste.filter((a) => a.traites > 0);
+  if (traites.length) {
+    const { debut, fin } = bloc(
+      "Performance par analyste (dossiers clos, réception → clôture)",
+      ["Analyste", "Traités", "Validés", "Rejetés", "Délai moyen (j)", "Dans les délais (%)"],
+      traites,
+      (a) => [a.analyste, a.traites, a.valides, a.rejetes, a.delaiTraitementMoyen ?? "—", a.tauxDansLesDelais ?? "—"],
+    );
+    /* Barre de données sur le taux de respect des délais : le classeur se lit
+       d'un coup d'œil, sans avoir à comparer les chiffres colonne par colonne.
+       `color` est bien lu par ExcelJS à l'écriture (databar-xform.js), mais
+       absent de ses définitions de types : l'échappement ci-dessous comble
+       cette seule lacune, sans affaiblir le contrôle de type du reste. */
+    synthese.addConditionalFormatting({
+      ref: `F${debut}:F${fin}`,
+      rules: [
+        {
+          type: "dataBar",
+          priority: 1,
+          gradient: false,
+          minLength: 0,
+          maxLength: 100,
+          cfvo: [
+            { type: "num", value: 0 },
+            { type: "num", value: 100 },
+          ],
+          color: { argb: HEX(ENCRE) },
+        } as import("exceljs").DataBarRuleType & { color: { argb: string } },
+      ],
+    });
+  }
+
   if (rapport.parDevise.length) {
     bloc("Montants par devise", ["Devise", "Dossiers", "Montant cumulé"], rapport.parDevise, (d) => [d.devise, d.nombre, d.montant]);
   }
@@ -486,5 +553,5 @@ export async function exporterXLSX(rapport: Rapport, dossiers: Dossier[]): Promi
 
   const tampon = await classeur.xlsx.writeBuffer();
   const type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
-  await telechargerFichier(nomFichier("xlsx"), new Blob([tampon], { type }), type);
+  return telechargerFichier(nomFichier("xlsx"), new Blob([tampon], { type }), type);
 }
