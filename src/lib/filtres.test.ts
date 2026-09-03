@@ -11,14 +11,14 @@ function d(over: Partial<Dossier> = {}): Dossier {
     id: "x",
     reference: "DRC/SA/2026/0041",
     demandeur: "Ondimba Marie‑Claire",
-    type: "transfert",
+    type: "immobilier_hors_cemac",
     montant: 0,
     devise: "XAF",
     dateReception: addDays(today, -5),
     delaiReglementaire: 30,
     analyste: "analyste",
     statut: "en_instruction",
-    pieces: piecesRequises("transfert"),
+    pieces: piecesRequises("immobilier_hors_cemac"),
     observations: "",
     historique: [],
     ...over,
@@ -73,9 +73,9 @@ describe("correspond — statut, niveau, recherche", () => {
   it("cherche dans la référence, le demandeur et le type, sans tenir compte de la casse", () => {
     expect(ok(d(), { q: "ondimba" })).toBe(true);
     expect(ok(d(), { q: "0041" })).toBe(true);
-    expect(ok(d(), { q: "Transfert" })).toBe(true);
+    expect(ok(d(), { q: "immobilière" })).toBe(true);
     expect(ok(d(), { q: "  " })).toBe(true);
-    expect(ok(d(), { q: "emprunt" })).toBe(false);
+    expect(ok(d(), { q: "emprunt obligataire" })).toBe(false);
   });
 
   it("combine les filtres", () => {
@@ -87,38 +87,40 @@ describe("correspond — statut, niveau, recherche", () => {
 
 describe("correspond — filtre par type d'opération", () => {
   it("sans sélection, tous les types passent", () => {
-    expect(ok(d({ type: "transfert" }), { types: [] })).toBe(true);
-    expect(ok(d({ type: "emprunt" }), { types: [] })).toBe(true);
+    expect(ok(d({ type: "immobilier_hors_cemac" }), { types: [] })).toBe(true);
+    expect(ok(d({ type: "pret_non_resident" }), { types: [] })).toBe(true);
   });
 
   it("retient les types sélectionnés, seuls", () => {
-    expect(ok(d({ type: "transfert" }), { types: ["transfert"] })).toBe(true);
-    expect(ok(d({ type: "emprunt" }), { types: ["transfert"] })).toBe(false);
+    expect(ok(d({ type: "immobilier_hors_cemac" }), { types: ["immobilier_hors_cemac"] })).toBe(true);
+    expect(ok(d({ type: "pret_non_resident" }), { types: ["immobilier_hors_cemac"] })).toBe(false);
   });
 
   it("accepte plusieurs types à la fois", () => {
-    const f = { types: ["transfert", "emprunt"] as const };
-    expect(ok(d({ type: "transfert" }), { types: [...f.types] })).toBe(true);
-    expect(ok(d({ type: "emprunt" }), { types: [...f.types] })).toBe(true);
-    expect(ok(d({ type: "investissement" }), { types: [...f.types] })).toBe(false);
+    const f = { types: ["immobilier_hors_cemac", "pret_non_resident"] as const };
+    expect(ok(d({ type: "immobilier_hors_cemac" }), { types: [...f.types] })).toBe(true);
+    expect(ok(d({ type: "pret_non_resident" }), { types: [...f.types] })).toBe(true);
+    expect(ok(d({ type: "investissement_direct" }), { types: [...f.types] })).toBe(false);
   });
 
   it("se combine avec les autres filtres", () => {
-    const dos = d({ type: "emprunt", analyste: "analyste", statut: "en_instruction" });
-    expect(ok(dos, { types: ["emprunt"], analyste: "__mine", statut: "en_cours" })).toBe(true);
-    expect(ok(dos, { types: ["transfert"], analyste: "__mine" })).toBe(false);
+    const dos = d({ type: "pret_non_resident", analyste: "analyste", statut: "en_instruction" });
+    expect(ok(dos, { types: ["pret_non_resident"], analyste: "__mine", statut: "en_cours" })).toBe(true);
+    expect(ok(dos, { types: ["immobilier_hors_cemac"], analyste: "__mine" })).toBe(false);
   });
 });
 
 describe("types dans l'URL", () => {
   it("fait l'aller-retour", () => {
-    expect(lireTypes(ecrireTypes(["transfert", "emprunt"]))).toEqual(["transfert", "emprunt"]);
+    expect(lireTypes(ecrireTypes(["immobilier_hors_cemac", "pret_non_resident"]))).toEqual(["immobilier_hors_cemac", "pret_non_resident"]);
   });
 
   it("ignore ce qui n'est pas un type connu, sans planter", () => {
-    expect(lireTypes("transfert,inconnu,emprunt")).toEqual(["transfert", "emprunt"]);
+    expect(lireTypes("investissement,inconnu,emprunt")).toEqual(["investissement_direct", "pret_non_resident"]);
     expect(lireTypes("")).toEqual([]);
     expect(lireTypes(null)).toEqual([]);
-    expect(lireTypes("  transfert , emprunt ")).toEqual(["transfert", "emprunt"]);
+    expect(lireTypes("  investissement , emprunt ")).toEqual(["investissement_direct", "pret_non_resident"]);
+    /* Sans équivalent au catalogue : ignoré plutôt que reclassé au hasard. */
+    expect(lireTypes("transfert,rapatriement")).toEqual([]);
   });
 });

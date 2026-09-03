@@ -2,13 +2,17 @@ import { useEffect, useSyncExternalStore } from "react";
 import * as MODELE from "../../shared/dossiers-modele.mjs";
 import { api, detecterMode, type Mode } from "./api";
 
+/** Types d'opération du catalogue du Service des Autorisations. */
 export type TypeDossier =
-  | "transfert"
-  | "investissement"
-  | "emprunt"
-  | "compte_devises"
-  | "rapatriement"
-  | "autre";
+  | "immobilier_hors_cemac"
+  | "investissement_direct"
+  | "pret_non_resident"
+  | "portefeuille_sortant"
+  | "valeurs_mobilieres"
+  | "bureau_de_change"
+  | "import_billets"
+  | "compte_devises_cemac"
+  | "compte_devises_hors_cemac";
 
 export type Statut = "en_instruction" | "en_attente_pieces" | "valide" | "rejete";
 
@@ -36,6 +40,8 @@ export interface Dossier {
   dateReception: string;
   /** Délai réglementaire de traitement en jours. */
   delaiReglementaire: number;
+  /** Sous-catégorie du catalogue, quand le type en porte une. */
+  sousType?: string | null;
   /** Nom d'utilisateur de l'analyste traitant, ou null si non attribué. */
   analyste: string | null;
   statut: Statut;
@@ -44,9 +50,17 @@ export interface Dossier {
   historique: Evenement[];
 }
 
-export const TYPE_LABELS: Record<TypeDossier, string> = MODELE.TYPE_LABELS;
-export const STATUT_LABELS: Record<Statut, string> = MODELE.STATUT_LABELS;
-export const DELAI_PAR_TYPE: Record<TypeDossier, number> = MODELE.DELAI_PAR_TYPE;
+/** Intitulé officiel du catalogue. */
+export const TYPE_LABELS = MODELE.TYPE_LABELS as Record<TypeDossier, string>;
+/** Intitulé court, pour les colonnes, les puces de filtre et les exports. */
+export const TYPE_COURT = MODELE.TYPE_COURT as Record<TypeDossier, string>;
+/** Sous-catégories du catalogue, pour les types qui en portent. */
+export const SOUS_TYPES = MODELE.SOUS_TYPES as Partial<Record<TypeDossier, string[]>>;
+export const DELAIS = MODELE.DELAIS as Record<TypeDossier, { jours: number; ouvres: boolean; source: "catalogue" | "defaut" }>;
+export const estEnJoursOuvres = MODELE.estEnJoursOuvres as (type: TypeDossier) => boolean;
+export const normaliserType = MODELE.normaliserType as (type: string) => TypeDossier | null;
+export const STATUT_LABELS = MODELE.STATUT_LABELS as Record<Statut, string>;
+export const DELAI_PAR_TYPE = MODELE.DELAI_PAR_TYPE as Record<TypeDossier, number>;
 
 export const piecesRequises = MODELE.piecesRequises as (type: TypeDossier) => Piece[];
 export const newId = MODELE.newId as () => string;
@@ -80,7 +94,11 @@ function lireLocal(): Dossier[] {
     const brut = localStorage.getItem(STORAGE_KEY);
     if (brut) {
       const lu = JSON.parse(brut);
-      if (Array.isArray(lu)) return lu as Dossier[];
+      /* Un registre local antérieur au catalogue porte des types qui n'existent
+         plus : ces données étant de démonstration, on repart du jeu courant. */
+      if (Array.isArray(lu) && lu.every((d) => normaliserType(d?.type))) {
+        return lu.map((d) => ({ ...d, type: normaliserType(d.type) })) as Dossier[];
+      }
     }
   } catch {
     /* stockage corrompu : on repart des données initiales */
@@ -201,6 +219,7 @@ const CSV_HEADERS = [
   "delaiReglementaire",
   "analyste",
   "statut",
+  "sousType",
   "pieces",
   "observations",
 ] as const;
@@ -283,9 +302,10 @@ export function fromCSV(text: string): ImportResult {
   lines.slice(1).forEach((line, i) => {
     const c = parseCSVLine(line, sep);
     const get = (h: string) => (idx(h) === -1 ? "" : (c[idx(h)] ?? "").trim());
-    const type = get("type") as TypeDossier;
+    /* Un fichier exporté avant l'adoption du catalogue reste importable. */
+    const type = normaliserType(get("type")) as TypeDossier;
     const dateReception = get("dateReception");
-    if (!TYPES.includes(type)) return erreurs.push(`Ligne ${i + 2} : type inconnu « ${type} »`);
+    if (!type || !TYPES.includes(type)) return erreurs.push(`Ligne ${i + 2} : type inconnu « ${get("type")} »`);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(dateReception))
       return erreurs.push(`Ligne ${i + 2} : date de réception invalide (attendu AAAA-MM-JJ)`);
     const statut = (get("statut") || "en_instruction") as Statut;
@@ -303,6 +323,7 @@ export function fromCSV(text: string): ImportResult {
       statut,
       /* Colonnes absentes d'un fichier tiers : on retombe sur les pièces
          requises par le type, sans écraser silencieusement un état connu. */
+      sousType: get("sousType") || null,
       pieces: decoderPieces(get("pieces"), type),
       observations: get("observations"),
       historique: [{ date: new Date().toISOString(), auteur: "import", action: "Import tableur" }],

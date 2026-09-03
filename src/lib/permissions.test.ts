@@ -7,7 +7,7 @@ const base: Dossier = {
   id: "1",
   reference: "R",
   demandeur: "X",
-  type: "transfert",
+  type: "immobilier_hors_cemac",
   montant: 0,
   devise: "XAF",
   dateReception: "2026-09-01",

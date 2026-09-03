@@ -1,5 +1,5 @@
 import { formatClock, formatDateFR, formatEdition, formatLongDateFR } from "./dates";
-import { calculerDelai, NIVEAU_LABELS } from "./delais";
+import { delaiDuDossier, NIVEAU_LABELS } from "./delais";
 import { STATUT_LABELS, TYPE_LABELS, type Dossier } from "./dossiers";
 import type { Rapport } from "./rapport";
 import { telechargerFichier } from "./telechargement";
@@ -32,7 +32,7 @@ function nomFichier(extension: string): string {
 /** Lignes du registre détaillé, communes aux deux formats. */
 function lignesRegistre(dossiers: Dossier[]) {
   return dossiers.map((d) => {
-    const c = calculerDelai(d.dateReception, d.delaiReglementaire);
+    const c = delaiDuDossier(d);
     const clos = d.statut === "valide" || d.statut === "rejete";
     return {
       reference: d.reference,

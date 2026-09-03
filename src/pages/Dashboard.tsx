@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useUser } from "../App";
 import { formatDateFR } from "../lib/dates";
-import { calculerDelai } from "../lib/delais";
+import { delaiDuDossier } from "../lib/delais";
 import { useDossiers } from "../lib/dossiers";
 import { Empty, NiveauBadge, Section, StatutBadge } from "../components/ui";
 
@@ -11,7 +11,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   const enCours = dossiers.filter((d) => d.statut === "en_instruction" || d.statut === "en_attente_pieces");
-  const calc = enCours.map((d) => ({ d, c: calculerDelai(d.dateReception, d.delaiReglementaire) }));
+  const calc = enCours.map((d) => ({ d, c: delaiDuDossier(d) }));
   /* Un analyste ne pilote que ses propres dossiers ; les autres profils voient tout. */
   const mesEnCours = user.role === "analyste" ? calc.filter((x) => x.d.analyste === user.username) : calc;
   /* Les indicateurs portent sur tout le service. Chaque lien force donc

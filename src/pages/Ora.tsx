@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useUser } from "../App";
-import { calculerDelai } from "../lib/delais";
+import { delaiDuDossier } from "../lib/delais";
 import { useDossiers } from "../lib/dossiers";
 import {
   demanderOra,
@@ -57,7 +57,7 @@ export default function Ora() {
   useEffect(() => () => abort.current?.abort(), []);
 
   const dossier = dossiers.find((d) => d.id === dossierId) ?? null;
-  const calc = dossier ? calculerDelai(dossier.dateReception, dossier.delaiReglementaire) : null;
+  const calc = dossier ? delaiDuDossier(dossier) : null;
 
   async function envoyer(texte: string) {
     const q = texte.trim();

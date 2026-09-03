@@ -1,5 +1,5 @@
 import type { CalculDelai } from "./delais";
-import { TYPE_LABELS, type Dossier, type TypeDossier } from "./dossiers";
+import { normaliserType, TYPE_LABELS, type Dossier, type TypeDossier } from "./dossiers";
 
 export interface FiltreRegistre {
   /** Recherche libre sur la référence, le demandeur et le type. */
@@ -23,13 +23,18 @@ export function filtreInitial(role: string): FiltreRegistre {
 
 const TYPES_CONNUS = Object.keys(TYPE_LABELS) as TypeDossier[];
 
-/** Lit le paramètre d'URL « types » : « transfert,emprunt ». */
+/**
+ * Lit le paramètre d'URL « types ». Les anciens codes d'opération y sont
+ * traduits : un lien partagé avant l'adoption du catalogue reste valide.
+ */
 export function lireTypes(param: string | null): TypeDossier[] {
   if (!param) return [];
-  return param
-    .split(",")
-    .map((t) => t.trim())
-    .filter((t): t is TypeDossier => TYPES_CONNUS.includes(t as TypeDossier));
+  const vus = new Set<TypeDossier>();
+  for (const brut of param.split(",")) {
+    const t = normaliserType(brut.trim());
+    if (t && TYPES_CONNUS.includes(t)) vus.add(t);
+  }
+  return [...vus];
 }
 
 export function ecrireTypes(types: TypeDossier[]): string {

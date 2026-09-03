@@ -10,14 +10,14 @@ function dossier(over: Partial<Dossier> = {}): Dossier {
     id: "d1",
     reference: "DRC/SA/2026/0044",
     demandeur: "Nguema Ondo Pascal",
-    type: "compte_devises",
+    type: "compte_devises_cemac",
     montant: 0,
     devise: "XAF",
     dateReception: addDays(today, -14),
     delaiReglementaire: 30,
     analyste: "analyste",
     statut: "en_attente_pieces",
-    pieces: piecesRequises("compte_devises").map((p, i) => ({ ...p, fourni: i < 2 })),
+    pieces: piecesRequises("compte_devises_cemac").map((p, i) => ({ ...p, fourni: i < 2 })),
     observations: "",
     historique: [],
     ...over,
@@ -38,8 +38,8 @@ describe("contexteDossier", () => {
 
   it("marque les pièces manquantes en clair", () => {
     const ctx = contexteDossier(dossier());
-    expect(ctx).toContain("Justificatif d'activité : MANQUANTE");
-    expect(ctx).toContain("Registre de commerce : fournie");
+    expect(ctx).toContain("Justificatifs du demandeur : MANQUANTE");
+    expect(ctx).toContain("Formulaire de demande : fournie");
   });
 });
 
@@ -64,8 +64,7 @@ describe("analyseLocale", () => {
 describe("reponseLocale", () => {
   it("liste les pièces à réclamer quand la question porte sur les pièces", () => {
     const r = reponseLocale("Que faut-il réclamer au demandeur ?", dossier());
-    expect(r).toContain("Justificatif d'activité");
-    expect(r).toContain("Attestation bancaire");
+    expect(r).toContain("Justificatifs du demandeur");
     expect(r).not.toContain("1. Qualification");
   });
 
@@ -92,7 +91,7 @@ describe("reponseLocale", () => {
   });
 
   it("ne réclame rien sur un dossier complet", () => {
-    const complet = dossier({ pieces: piecesRequises("compte_devises").map((p) => ({ ...p, fourni: true })) });
+    const complet = dossier({ pieces: piecesRequises("compte_devises_cemac").map((p) => ({ ...p, fourni: true })) });
     expect(reponseLocale("Quelles pièces manquent ?", complet)).toContain("est complet");
   });
 });

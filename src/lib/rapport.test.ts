@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { construireRapport } from "./rapport";
-import { piecesRequises, type Dossier, type Statut, type TypeDossier } from "./dossiers";
+import { piecesRequises, type Dossier, type Statut } from "./dossiers";
 import { addDays, toISODate } from "./dates";
 
 const AUJ = "2026-09-02";
@@ -10,14 +10,14 @@ function d(over: Partial<Dossier> = {}): Dossier {
     id: Math.random().toString(36).slice(2),
     reference: "DRC/SA/2026/0001",
     demandeur: "Demandeur",
-    type: "transfert",
+    type: "immobilier_hors_cemac",
     montant: 0,
     devise: "XAF",
     dateReception: addDays(AUJ, -10),
     delaiReglementaire: 30,
     analyste: "analyste",
     statut: "en_instruction",
-    pieces: piecesRequises("transfert"),
+    pieces: piecesRequises("immobilier_hors_cemac"),
     observations: "",
     historique: [],
     ...over,
@@ -81,21 +81,21 @@ describe("construireRapport — délais", () => {
 
 describe("construireRapport — pièces", () => {
   it("mesure la complétude et compte les pièces manquantes", () => {
-    const complet = d({ pieces: piecesRequises("transfert").map((p) => ({ ...p, fourni: true })) });
-    const partiel = d({ pieces: piecesRequises("transfert").map((p, i) => ({ ...p, fourni: i < 2 })) });
+    const requises = piecesRequises("immobilier_hors_cemac");
+    const complet = d({ pieces: requises.map((p) => ({ ...p, fourni: true })) });
+    const partiel = d({ pieces: requises.map((p, i) => ({ ...p, fourni: i === 0 })) });
     const r = construireRapport([complet, partiel], "T", AUJ);
+    const total = requises.length * 2;
     expect(r.dossiersComplets).toBe(1);
-    expect(r.piecesManquantes).toBe(2);
-    expect(r.completude).toBe(75);
+    expect(r.piecesManquantes).toBe(requises.length - 1);
+    expect(r.completude).toBe(Math.round(((requises.length + 1) / total) * 100));
   });
 });
 
 describe("construireRapport — ventilations", () => {
   it("détaille chaque type présent, et lui seul", () => {
-    const r = construireRapport([d({ type: "transfert" }), d({ type: "emprunt" })], "T", AUJ);
-    expect(r.parType.map((l) => l.type).sort()).toEqual(["emprunt", "transfert"]);
-    const types = Object.keys({} as Record<TypeDossier, unknown>);
-    void types;
+    const r = construireRapport([d({ type: "immobilier_hors_cemac" }), d({ type: "pret_non_resident" })], "T", AUJ);
+    expect(r.parType.map((l) => l.type).sort()).toEqual(["immobilier_hors_cemac", "pret_non_resident"]);
     expect(r.parType.every((l) => l.total > 0)).toBe(true);
   });
 

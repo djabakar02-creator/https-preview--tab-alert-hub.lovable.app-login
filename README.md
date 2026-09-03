@@ -40,11 +40,37 @@ exactement ce que l'écran affiche.
 Les bibliothèques d'export sont chargées à la demande : elles ne pèsent sur le
 temps d'ouverture d'aucune autre page.
 
+## Catalogue des opérations
+
+Les types d'opération et leurs sous-catégories proviennent du catalogue du
+Service des Autorisations (`Autorisations_Ops.xlsx`), dans
+`shared/dossiers-modele.mjs` : neuf types, dont deux portent des
+sous-catégories (valeurs mobilières, avis conforme de bureau de change).
+Chaque type a un intitulé officiel, repris tel quel, et un intitulé court pour
+les colonnes et les filtres.
+
+**Délais.** Le catalogue ne précise qu'un seul délai : 60 jours **ouvrés** pour
+les investissements de portefeuille sortants supérieurs à 20 millions F CFA. Ce
+type est donc décompté hors samedis et dimanches ; les jours fériés ne le sont
+pas, faute de calendrier. Les huit autres portent une valeur de travail de
+30 jours, marquée `source: "defaut"` et signalée en rouge dans le formulaire :
+un délai réglementaire ne s'invente pas, celui-ci est à confirmer par le
+service.
+
+**Pièces.** Le catalogue ne porte pas la liste des pièces exigées par type. Une
+trame générique permet de suivre la complétude sans présenter comme officielle
+une liste qui ne l'est pas.
+
+**Reprise de l'existant.** Trois anciens codes se traduisent sans ambiguïté
+(`investissement`, `emprunt`, `compte_devises`). « Transfert de fonds »,
+« Rapatriement de recettes » et « Autre demande » n'ont pas de contrepartie au
+catalogue : un import les signale au lieu de les reclasser d'office.
+
 ## Filtre par type d'opération
 
 Le registre et les rapports partagent un même sélecteur : plusieurs types se
 cumulent, aucune sélection valant « tous les types ». Le choix est porté par
-l'URL (`?types=transfert,emprunt`), donc il survit à un rechargement et se
+l'URL (`?types=immobilier_hors_cemac,pret_non_resident`), donc il survit à un rechargement et se
 partage par lien.
 
 ## Ora, assistante d'instruction

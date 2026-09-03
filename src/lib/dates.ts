@@ -32,6 +32,43 @@ export function addDays(iso: string, days: number): string {
   return toISODate(d);
 }
 
+/** Le jour est-il ouvré ? Samedi et dimanche exclus. */
+export function estJourOuvre(iso: string): boolean {
+  const j = parseISODate(iso).getDay();
+  return j !== 0 && j !== 6;
+}
+
+/**
+ * Jours ouvrés entre deux dates ISO (b - a), samedi et dimanche exclus.
+ *
+ * Les jours fériés ne sont pas décomptés : leur calendrier n'est pas fourni.
+ * Le décompte peut donc être légèrement optimiste autour d'un jour férié.
+ */
+export function diffJoursOuvres(a: string, b: string): number {
+  const debut = parseISODate(a);
+  const fin = parseISODate(b);
+  const sens = fin >= debut ? 1 : -1;
+  let n = 0;
+  const curseur = new Date(debut);
+  while (sens > 0 ? curseur < fin : curseur > fin) {
+    curseur.setDate(curseur.getDate() + sens);
+    if (estJourOuvre(toISODate(curseur))) n += sens;
+  }
+  return n;
+}
+
+/** Ajoute un nombre de jours ouvrés à une date ISO. */
+export function addJoursOuvres(iso: string, jours: number): string {
+  const d = parseISODate(iso);
+  let restants = Math.abs(jours);
+  const sens = jours < 0 ? -1 : 1;
+  while (restants > 0) {
+    d.setDate(d.getDate() + sens);
+    if (estJourOuvre(toISODate(d))) restants -= 1;
+  }
+  return toISODate(d);
+}
+
 /** Nombre de jours calendaires entiers entre deux dates ISO (b - a). */
 export function diffDays(a: string, b: string): number {
   const ms = parseISODate(b).getTime() - parseISODate(a).getTime();

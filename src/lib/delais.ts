@@ -1,10 +1,13 @@
-import { addDays, diffDays, toISODate } from "./dates";
+import { estEnJoursOuvres } from "../../shared/dossiers-modele.mjs";
+import { addDays, addJoursOuvres, diffDays, diffJoursOuvres, toISODate } from "./dates";
 
 export type Niveau = "conforme" | "a_suivre" | "urgent" | "depasse";
 
 export interface CalculDelai {
   /** Jours écoulés depuis la réception par la Banque Centrale (J+n). */
   joursEcoules: number;
+  /** Le décompte est-il en jours ouvrés ? */
+  ouvres: boolean;
   /** Date limite réglementaire (réception + délai réglementaire). */
   echeance: string;
   /** Jours restants avant l'échéance (négatif si dépassée). */
@@ -34,9 +37,20 @@ export function calculerDelai(
   dateReception: string,
   delaiReglementaire: number,
   aujourdHui: string = toISODate(new Date()),
+  ouvres = false,
 ): CalculDelai {
-  const joursEcoules = diffDays(dateReception, aujourdHui);
-  const echeance = addDays(dateReception, delaiReglementaire);
+  /* Certains types se comptent en jours ouvrés : le catalogue du service le
+     précise pour les investissements de portefeuille sortants. */
+  const joursEcoules = ouvres ? diffJoursOuvres(dateReception, aujourdHui) : diffDays(dateReception, aujourdHui);
+  const echeance = ouvres ? addJoursOuvres(dateReception, delaiReglementaire) : addDays(dateReception, delaiReglementaire);
   const delaiRestant = delaiReglementaire - joursEcoules;
-  return { joursEcoules, echeance, delaiRestant, niveau: niveauPour(delaiRestant) };
+  return { joursEcoules, ouvres, echeance, delaiRestant, niveau: niveauPour(delaiRestant) };
+}
+
+/** Raccourci : calcule le délai d'un dossier en tenant compte de son type. */
+export function delaiDuDossier(
+  d: { dateReception: string; delaiReglementaire: number; type: string },
+  aujourdHui?: string,
+): CalculDelai {
+  return calculerDelai(d.dateReception, d.delaiReglementaire, aujourdHui, estEnJoursOuvres(d.type));
 }

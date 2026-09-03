@@ -16,6 +16,7 @@ const CHAMPS = [
   "reference",
   "demandeur",
   "type",
+  "sousType",
   "montant",
   "devise",
   "dateReception",
@@ -40,6 +41,7 @@ function nettoyer(d) {
   if (!(Number(out.delaiReglementaire) > 0)) throw new ErreurRequete("Délai réglementaire invalide.");
   out.montant = Number(out.montant) || 0;
   out.analyste = out.analyste ?? null;
+  out.sousType = out.sousType ?? null;
   out.pieces = Array.isArray(out.pieces) ? out.pieces.map((p) => ({ label: String(p?.label ?? ""), fourni: Boolean(p?.fourni) })) : [];
   out.historique = Array.isArray(out.historique) ? out.historique.slice(-200) : [];
   out.observations = String(out.observations ?? "");

@@ -1,16 +1,86 @@
 /**
  * Modèle métier des dossiers, partagé par le navigateur et le service.
  * En JavaScript simple, pour être importé sans étape de compilation.
+ *
+ * Les types d'opération et leurs sous-catégories proviennent du catalogue du
+ * Service des Autorisations (Autorisations_Ops.xlsx). Les intitulés longs sont
+ * ceux du service ; les intitulés courts servent aux tableaux et aux filtres.
  */
 
+/** Intitulé officiel, tel qu'il figure au catalogue du service. */
 export const TYPE_LABELS = {
-  transfert: "Transfert de fonds",
-  investissement: "Investissement direct étranger",
-  emprunt: "Emprunt extérieur",
-  compte_devises: "Ouverture de compte en devises",
-  rapatriement: "Rapatriement de recettes d'exportation",
-  autre: "Autre demande",
+  immobilier_hors_cemac:
+    "Demande d'autorisation pour acquisition immobilière hors CEMAC de biens immobiliers par les résidents",
+  investissement_direct:
+    "Demande d'autorisation pour une opération d'investissement direct à l'étranger autre que celle portant sur l'immobilier (ex : prise de participation / création d'entreprise)",
+  pret_non_resident:
+    "Demande d'autorisation de prêt d'un résident (autre qu'un Ets de crédit/État) à un non-résident",
+  portefeuille_sortant:
+    "Demande d'autorisation de réalisation des investissements de portefeuille sortants d'un montant supérieur à 20 millions F CFA",
+  valeurs_mobilieres:
+    "Demande d'autorisation pour les opérations relatives aux valeurs mobilières (émission/publicité, souscription/transfert)",
+  bureau_de_change: "Demande d'avis conforme de bureau de change",
+  import_billets: "Demande d'autorisation d'importation de billets de banque étrangers",
+  compte_devises_cemac:
+    "Demande d'autorisation d'ouverture de compte en devise des personnes morales résidentes dans la CEMAC",
+  compte_devises_hors_cemac:
+    "Demande d'autorisation d'ouverture de compte en devise par les personnes morales résidentes hors de la CEMAC",
 };
+
+/** Intitulé court, pour les colonnes, les puces de filtre et les exports. */
+export const TYPE_COURT = {
+  immobilier_hors_cemac: "Acquisition immobilière hors CEMAC",
+  investissement_direct: "Investissement direct à l'étranger",
+  pret_non_resident: "Prêt à un non-résident",
+  portefeuille_sortant: "Investissement de portefeuille sortant",
+  valeurs_mobilieres: "Valeurs mobilières",
+  bureau_de_change: "Avis conforme de bureau de change",
+  import_billets: "Importation de billets étrangers",
+  compte_devises_cemac: "Compte en devises · résident CEMAC",
+  compte_devises_hors_cemac: "Compte en devises · résident hors CEMAC",
+};
+
+/** Sous-catégories du catalogue, pour les deux types qui en portent. */
+export const SOUS_TYPES = {
+  valeurs_mobilieres: [
+    "Pour les émissions/publicité de VM",
+    "Pour les souscriptions aux VM par des résidents et les transferts vers l'extérieur des produits afférents",
+  ],
+  bureau_de_change: [
+    "Pour le bureau de change à agréer",
+    "Pour le gérant ou dirigeant",
+    "Si Promoteur personne physique",
+    "Si Promoteur personne morale",
+  ],
+};
+
+/**
+ * Délai réglementaire par type.
+ *
+ * `source: "catalogue"` — le délai figure au catalogue du service.
+ * `source: "defaut"`    — VALEUR DE TRAVAIL, à confirmer par le service. Le
+ *                          catalogue ne la précise pas, et un délai
+ *                          réglementaire ne s'invente pas. Elle reste modifiable
+ *                          dossier par dossier.
+ *
+ * `ouvres: true` compte en jours ouvrés (samedi et dimanche exclus).
+ */
+export const DELAIS = {
+  immobilier_hors_cemac: { jours: 30, ouvres: false, source: "defaut" },
+  investissement_direct: { jours: 30, ouvres: false, source: "defaut" },
+  pret_non_resident: { jours: 30, ouvres: false, source: "defaut" },
+  portefeuille_sortant: { jours: 60, ouvres: true, source: "catalogue" },
+  valeurs_mobilieres: { jours: 30, ouvres: false, source: "defaut" },
+  bureau_de_change: { jours: 30, ouvres: false, source: "defaut" },
+  import_billets: { jours: 30, ouvres: false, source: "defaut" },
+  compte_devises_cemac: { jours: 30, ouvres: false, source: "defaut" },
+  compte_devises_hors_cemac: { jours: 30, ouvres: false, source: "defaut" },
+};
+
+export const DELAI_PAR_TYPE = Object.fromEntries(Object.entries(DELAIS).map(([k, v]) => [k, v.jours]));
+
+/** Le délai de ce type se compte-t-il en jours ouvrés ? */
+export const estEnJoursOuvres = (type) => Boolean(DELAIS[type]?.ouvres);
 
 export const STATUT_LABELS = {
   en_instruction: "En instruction",
@@ -19,27 +89,51 @@ export const STATUT_LABELS = {
   rejete: "Rejeté",
 };
 
-/** Délai réglementaire retenu par défaut, en jours, selon le type de demande. */
-export const DELAI_PAR_TYPE = {
-  transfert: 30,
-  investissement: 45,
-  emprunt: 60,
-  compte_devises: 30,
-  rapatriement: 30,
-  autre: 30,
+/**
+ * Liste de pièces par défaut.
+ *
+ * Le catalogue transmis ne porte que les intitulés des opérations : la liste
+ * des pièces exigées pour chaque type reste à fournir par le service. En
+ * attendant, cette trame générique permet de suivre la complétude sans
+ * présenter comme officielle une liste qui ne l'est pas.
+ */
+const PIECES_PAR_TYPE = {
+  bureau_de_change: [
+    "Formulaire de demande",
+    "Dossier du bureau de change à agréer",
+    "Dossier du gérant ou dirigeant",
+    "Dossier du promoteur",
+  ],
 };
 
-const PIECES_PAR_TYPE = {
-  transfert: ["Formulaire de demande", "Facture / contrat", "Justificatif d'origine des fonds", "Attestation fiscale"],
-  investissement: ["Formulaire de déclaration", "Statuts de la société", "Plan de financement", "Attestation bancaire"],
-  emprunt: ["Convention de prêt", "Tableau d'amortissement", "Autorisation du conseil", "Attestation fiscale"],
-  compte_devises: ["Formulaire de demande", "Registre de commerce", "Justificatif d'activité", "Attestation bancaire"],
-  rapatriement: ["Déclaration d'exportation", "Facture définitive", "Attestation de domiciliation", "Relevé bancaire"],
-  autre: ["Formulaire de demande", "Pièce justificative"],
-};
+const PIECES_GENERIQUES = [
+  "Formulaire de demande",
+  "Pièces justificatives de l'opération",
+  "Justificatifs du demandeur",
+];
 
 export function piecesRequises(type) {
-  return (PIECES_PAR_TYPE[type] ?? PIECES_PAR_TYPE.autre).map((label) => ({ label, fourni: false }));
+  return (PIECES_PAR_TYPE[type] ?? PIECES_GENERIQUES).map((label) => ({ label, fourni: false }));
+}
+
+/**
+ * Correspondance depuis l'ancien jeu de types.
+ *
+ * Seules les équivalences certaines figurent ici. « Transfert de fonds »,
+ * « Rapatriement de recettes » et « Autre demande » n'ont pas de contrepartie
+ * au catalogue : les convertir reviendrait à ranger un dossier sous une
+ * catégorie réglementaire qui n'est peut-être pas la sienne. Ils sont donc
+ * signalés à l'import, pour que l'agent les requalifie lui-même.
+ */
+const ANCIENS_TYPES = {
+  investissement: "investissement_direct",
+  emprunt: "pret_non_resident",
+  compte_devises: "compte_devises_cemac",
+};
+
+export function normaliserType(type) {
+  if (type in TYPE_LABELS) return type;
+  return ANCIENS_TYPES[type] ?? null;
 }
 
 export function newId() {
@@ -64,15 +158,16 @@ export function donneesInitiales() {
     auteur,
     action,
   });
-  const mk = (n, demandeur, type, montant, devise, recuIlYA, analyste, statut, fournies) => ({
+  const mk = (n, demandeur, type, sousType, montant, devise, recuIlYA, analyste, statut, fournies) => ({
     id: newId(),
     reference: `DRC/SA/${new Date().getFullYear()}/${String(n).padStart(4, "0")}`,
     demandeur,
     type,
+    sousType,
     montant,
     devise,
     dateReception: ilYA(recuIlYA),
-    delaiReglementaire: DELAI_PAR_TYPE[type],
+    delaiReglementaire: DELAIS[type].jours,
     analyste,
     statut,
     pieces: piecesRequises(type).map((p, i) => ({ ...p, fourni: i < fournies })),
@@ -85,14 +180,15 @@ export function donneesInitiales() {
   });
 
   const d = [
-    mk(41, "Ondimba Marie‑Claire", "transfert", 185_000_000, "XAF", 27, "analyste", "en_instruction", 4),
-    mk(42, "SOCAGI SA", "investissement", 2_400_000, "EUR", 19, "analyste", "en_instruction", 3),
-    mk(43, "Bekolo & Fils SARL", "emprunt", 950_000, "USD", 21, "hierarchie", "en_instruction", 4),
-    mk(44, "Nguema Ondo Pascal", "compte_devises", 0, "XAF", 14, "analyste", "en_attente_pieces", 2),
-    mk(45, "Cotonnière du Tchad", "rapatriement", 1_120_000_000, "XAF", 8, null, "en_instruction", 3),
-    mk(46, "Mbappé Ekani Justine", "transfert", 45_000_000, "XAF", 3, "analyste", "en_instruction", 1),
-    mk(47, "Petro‑Congo Services", "emprunt", 5_000_000, "USD", 64, "hierarchie", "en_instruction", 4),
-    mk(48, "Alliance Bâtiment SA", "transfert", 320_000_000, "XAF", 35, "analyste", "valide", 4),
+    mk(41, "Ondimba Marie‑Claire", "immobilier_hors_cemac", null, 185_000_000, "XAF", 27, "analyste", "en_instruction", 3),
+    mk(42, "SOCAGI SA", "investissement_direct", null, 2_400_000, "EUR", 19, "analyste", "en_instruction", 2),
+    mk(43, "Bekolo & Fils SARL", "pret_non_resident", null, 950_000, "USD", 21, "hierarchie", "en_instruction", 3),
+    mk(44, "Nguema Ondo Pascal", "compte_devises_cemac", null, 0, "XAF", 14, "analyste", "en_attente_pieces", 1),
+    mk(45, "Cotonnière du Tchad", "portefeuille_sortant", null, 1_120_000_000, "XAF", 8, null, "en_instruction", 2),
+    mk(46, "Mbappé Ekani Justine", "valeurs_mobilieres", SOUS_TYPES.valeurs_mobilieres[0], 45_000_000, "XAF", 3, "analyste", "en_instruction", 1),
+    mk(47, "Petro‑Congo Services", "import_billets", null, 5_000_000, "USD", 64, "hierarchie", "en_instruction", 3),
+    mk(48, "Alliance Bâtiment SA", "compte_devises_hors_cemac", null, 320_000_000, "XAF", 35, "analyste", "valide", 3),
+    mk(49, "Change Express SARL", "bureau_de_change", SOUS_TYPES.bureau_de_change[0], 0, "XAF", 11, "analyste", "en_instruction", 2),
   ];
   d[7].historique.push(ev("hierarchie", "Validation du dossier", 0));
   return d;
@@ -132,15 +228,15 @@ export function refusEcriture(u, avant, suivant) {
 
   const changeDecision = avant.statut !== suivant.statut && (CLOS.includes(avant.statut) || CLOS.includes(suivant.statut));
   const changeAnalyste = avant.analyste !== suivant.analyste;
-  const changeReste = ["reference", "demandeur", "type", "montant", "devise", "dateReception", "delaiReglementaire", "observations"].some(
-    (k) => JSON.stringify(avant[k]) !== JSON.stringify(suivant[k]),
-  ) || JSON.stringify(avant.pieces) !== JSON.stringify(suivant.pieces);
+  const changeReste =
+    ["reference", "demandeur", "type", "sousType", "montant", "devise", "dateReception", "delaiReglementaire", "observations"].some(
+      (k) => JSON.stringify(avant[k]) !== JSON.stringify(suivant[k]),
+    ) || JSON.stringify(avant.pieces) !== JSON.stringify(suivant.pieces);
 
   if (changeDecision && !PERMISSIONS.decider(u)) return "Seule la hiérarchie peut valider ou rejeter un dossier.";
   if (changeAnalyste && !(PERMISSIONS.reassigner(u) || PERMISSIONS.editer(u, avant)))
     return "Votre profil ne permet pas de réattribuer ce dossier.";
   if (changeReste && !PERMISSIONS.editer(u, avant))
     return "Ce dossier est attribué à un autre analyste : vous ne pouvez pas le modifier.";
-  if (!changeDecision && !changeAnalyste && !changeReste) return null;
   return null;
 }

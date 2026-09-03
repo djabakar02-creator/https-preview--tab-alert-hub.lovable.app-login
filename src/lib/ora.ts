@@ -1,6 +1,6 @@
 import { SYSTEM_ORA } from "../../shared/ora-persona.mjs";
 import { formatDateFR } from "./dates";
-import { calculerDelai, NIVEAU_LABELS } from "./delais";
+import { delaiDuDossier, NIVEAU_LABELS } from "./delais";
 import { STATUT_LABELS, TYPE_LABELS, type Dossier } from "./dossiers";
 
 /* ------------------------------------------------------------------ */
@@ -40,7 +40,7 @@ export { ORA, ORA_COMPETENCES, ORA_SUGGESTIONS } from "../../shared/ora-persona.
 /* ------------------------------------------------------------------ */
 
 export function contexteDossier(d: Dossier): string {
-  const c = calculerDelai(d.dateReception, d.delaiReglementaire);
+  const c = delaiDuDossier(d);
   const pieces = d.pieces.map((p) => `- ${p.label} : ${p.fourni ? "fournie" : "MANQUANTE"}`).join("\n");
   const clos = d.statut === "valide" || d.statut === "rejete";
   return [
@@ -69,7 +69,7 @@ export function contexteDossier(d: Dossier): string {
 /* ------------------------------------------------------------------ */
 
 export function analyseLocale(d: Dossier): string {
-  const c = calculerDelai(d.dateReception, d.delaiReglementaire);
+  const c = delaiDuDossier(d);
   const manquantes = d.pieces.filter((p) => !p.fourni);
   const complet = manquantes.length === 0;
   const clos = d.statut === "valide" || d.statut === "rejete";
@@ -120,7 +120,7 @@ const sansAccent = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toL
  */
 export function reponseLocale(question: string, d: Dossier): string {
   const q = sansAccent(question);
-  const c = calculerDelai(d.dateReception, d.delaiReglementaire);
+  const c = delaiDuDossier(d);
   const manquantes = d.pieces.filter((p) => !p.fourni);
   const clos = d.statut === "valide" || d.statut === "rejete";
   const a = (corps: string) => `${corps}\n\n${NOTE_LOCALE}`;

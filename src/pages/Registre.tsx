@@ -3,9 +3,10 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useUser } from "../App";
 import { DEMO_ACCOUNTS } from "../lib/auth";
 import { formatDateFR, formatDateTimeFR, toISODate } from "../lib/dates";
-import { calculerDelai, NIVEAU_LABELS, type Niveau } from "../lib/delais";
+import { delaiDuDossier, NIVEAU_LABELS, type Niveau } from "../lib/delais";
 import {
   DELAI_PAR_TYPE,
+  DELAIS,
   fromCSV,
   newId,
   nextReference,
@@ -13,7 +14,9 @@ import {
   removeDossier,
   replaceAll,
   resetToSeed,
+  SOUS_TYPES,
   STATUT_LABELS,
+  TYPE_COURT,
   TYPE_LABELS,
   upsertDossier,
   useDossiers,
@@ -45,6 +48,8 @@ async function ecrire(action: () => Promise<void>, signaler: (m: string) => void
   }
 }
 
+const TYPE_DEFAUT: TypeDossier = "immobilier_hors_cemac";
+
 const ANALYSTES = DEMO_ACCOUNTS.filter((a) => a.role === "analyste" || a.role === "hierarchie" || a.role === "admin");
 
 /* ------------------------------------------------------------------ */
@@ -59,31 +64,36 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
       id: newId(),
       reference: nextReference(),
       demandeur: "",
-      type: "transfert",
+      type: TYPE_DEFAUT,
+      sousType: null,
       montant: 0,
       devise: "XAF",
       dateReception: today,
-      delaiReglementaire: DELAI_PAR_TYPE.transfert,
+      delaiReglementaire: DELAI_PAR_TYPE[TYPE_DEFAUT],
       analyste: user.role === "analyste" ? user.username : null,
       statut: "en_instruction",
-      pieces: piecesRequises("transfert"),
+      pieces: piecesRequises(TYPE_DEFAUT),
       observations: "",
       historique: [],
     },
   );
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [envoi, setEnvoi] = useState(false);
-  const calc = calculerDelai(f.dateReception, f.delaiReglementaire);
+  const calc = delaiDuDossier(f);
   const set = <K extends keyof Dossier>(k: K, v: Dossier[K]) => setF((x) => ({ ...x, [k]: v }));
 
   function changerType(type: TypeDossier) {
     setF((x) => ({
       ...x,
       type,
+      /* La sous-catégorie appartient au type : elle ne survit pas au changement. */
+      sousType: SOUS_TYPES[type]?.[0] ?? null,
       delaiReglementaire: DELAI_PAR_TYPE[type],
       pieces: initial && initial.type === type ? initial.pieces : piecesRequises(type),
     }));
   }
+
+  const sousTypes = SOUS_TYPES[f.type];
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -123,14 +133,34 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
         </label>
         <label className="block">
           <span className="label-caps text-[10px] block mb-1">Type de demande</span>
-          <select className="field" value={f.type} onChange={(e) => changerType(e.target.value as TypeDossier)}>
-            {(Object.keys(TYPE_LABELS) as TypeDossier[]).map((t) => (
-              <option key={t} value={t}>
-                {TYPE_LABELS[t]}
+          <select
+            className="field"
+            value={f.type}
+            onChange={(e) => changerType(e.target.value as TypeDossier)}
+            title={TYPE_LABELS[f.type]}
+          >
+            {(Object.keys(TYPE_COURT) as TypeDossier[]).map((t) => (
+              <option key={t} value={t} title={TYPE_LABELS[t]}>
+                {TYPE_COURT[t]}
               </option>
             ))}
           </select>
+          <span className="block text-[11px] opacity-60 mt-1 leading-snug">{TYPE_LABELS[f.type]}</span>
         </label>
+
+        {sousTypes && (
+          <label className="block md:col-span-2">
+            <span className="label-caps text-[10px] block mb-1">Sous-catégorie</span>
+            <select className="field" value={f.sousType ?? ""} onChange={(e) => set("sousType", e.target.value || null)}>
+              <option value="">— Non précisée —</option>
+              {sousTypes.map((st) => (
+                <option key={st} value={st}>
+                  {st}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <div className="grid grid-cols-[1fr_90px] gap-2">
           <label className="block">
             <span className="label-caps text-[10px] block mb-1">Montant</span>
@@ -164,7 +194,13 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
             Délai restant : <strong className={calc.delaiRestant <= 3 ? "text-rouge" : ""}>{calc.delaiRestant} j</strong>
           </span>
           <NiveauBadge niveau={calc.niveau} />
-          <span className="opacity-60 text-xs w-full">Calculé automatiquement : date du jour − date de réception. Non modifiable.</span>
+          <span className="opacity-60 text-xs w-full">
+            Calculé automatiquement : date du jour − date de réception
+            {DELAIS[f.type].ouvres ? ", en jours ouvrés" : ""}. Non modifiable.
+            {DELAIS[f.type].source === "defaut" && (
+              <strong className="text-rouge"> Délai réglementaire à confirmer par le service.</strong>
+            )}
+          </span>
         </div>
         {user.role !== "analyste" && (
           <label className="block">
@@ -247,7 +283,7 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
 function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => void; onEdit: () => void; signaler: (m: string) => void }) {
   const user = useUser();
   const navigate = useNavigate();
-  const c = calculerDelai(d.dateReception, d.delaiReglementaire);
+  const c = delaiDuDossier(d);
   const [reassign, setReassign] = useState<string>(d.analyste ?? "");
   const [confirmSuppr, setConfirmSuppr] = useState(false);
   const clos = estClos(d.statut);
@@ -261,7 +297,9 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
         <div className="space-y-5">
           <div>
             <p className="font-display text-2xl">{d.demandeur}</p>
-            <p className="text-sm opacity-70">{TYPE_LABELS[d.type]} · {fmtMontant(d.montant, d.devise)}</p>
+            <p className="text-sm opacity-70">{TYPE_LABELS[d.type]}</p>
+            {d.sousType && <p className="text-sm opacity-70 italic">{d.sousType}</p>}
+            <p className="text-sm opacity-70">{fmtMontant(d.montant, d.devise)}</p>
             <div className="flex gap-2 mt-2">
               <StatutBadge statut={d.statut} />
               <NiveauBadge niveau={c.niveau} clos={clos} />
@@ -271,7 +309,9 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
             <dt className="opacity-70">Réception BEAC</dt>
             <dd className="font-semibold">{formatDateFR(d.dateReception)}</dd>
             <dt className="opacity-70">Délai réglementaire</dt>
-            <dd className="font-semibold">{d.delaiReglementaire} jours</dd>
+            <dd className="font-semibold">
+              {d.delaiReglementaire} jours{DELAIS[d.type].ouvres ? " ouvrés" : ""}
+            </dd>
             <dt className="opacity-70">Jours écoulés</dt>
             <dd className="font-semibold tabular-nums">J+{c.joursEcoules}</dd>
             <dt className="opacity-70">Échéance</dt>
@@ -516,7 +556,7 @@ export default function Registre() {
 
   const lignes = useMemo(() => {
     return dossiers
-      .map((d) => ({ d, c: calculerDelai(d.dateReception, d.delaiReglementaire) }))
+      .map((d) => ({ d, c: delaiDuDossier(d) }))
       .filter(({ d, c }) => correspond(d, c, { q, statut, niveau, analyste, types }, user.username))
       .sort((a, b) => a.c.delaiRestant - b.c.delaiRestant);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -622,7 +662,7 @@ export default function Registre() {
             </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(TYPE_LABELS) as TypeDossier[]).map((t) => {
+            {(Object.keys(TYPE_COURT) as TypeDossier[]).map((t) => {
               const actif = types.includes(t);
               const n = dossiers.filter((d) => d.type === t).length;
               return (
@@ -631,11 +671,12 @@ export default function Registre() {
                   type="button"
                   aria-pressed={actif}
                   onClick={() => basculerType(t)}
+                  title={TYPE_LABELS[t]}
                   className={`text-[11px] font-semibold px-2.5 py-1.5 border transition ${
                     actif ? "bg-ink text-white border-ink" : "border-ink/40 hover:border-ink"
                   }`}
                 >
-                  {TYPE_LABELS[t]}
+                  {TYPE_COURT[t]}
                   <span className={`ml-1.5 tabular-nums ${actif ? "opacity-70" : "opacity-50"}`}>{n}</span>
                 </button>
               );
@@ -671,7 +712,10 @@ export default function Registre() {
                   <tr key={d.id} className="border-b border-ink/10 hover:bg-sand/50 cursor-pointer" onClick={() => navigate(`/registre/${d.id}`)}>
                     <td className="px-3 py-2 font-mono text-xs whitespace-nowrap">{d.reference}</td>
                     <td className="px-3 py-2 font-semibold">{d.demandeur}</td>
-                    <td className="px-3 py-2 text-xs">{TYPE_LABELS[d.type]}</td>
+                    <td className="px-3 py-2 text-xs min-w-[170px]" title={TYPE_LABELS[d.type]}>
+                      {TYPE_COURT[d.type]}
+                      {d.sousType && <span className="block opacity-55">{d.sousType}</span>}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap">{formatDateFR(d.dateReception)}</td>
                     <td className="px-3 py-2 whitespace-nowrap">{formatDateFR(c.echeance)}</td>
                     <td className="px-3 py-2 tabular-nums">J+{c.joursEcoules}</td>

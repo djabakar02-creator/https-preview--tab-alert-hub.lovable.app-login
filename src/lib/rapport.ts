@@ -1,5 +1,5 @@
 import { diffDays, parseISODate, toISODate } from "./dates";
-import { calculerDelai, NIVEAU_LABELS, type Niveau } from "./delais";
+import { delaiDuDossier, NIVEAU_LABELS, type Niveau } from "./delais";
 import { STATUT_LABELS, TYPE_LABELS, type Dossier, type Statut, type TypeDossier } from "./dossiers";
 
 /**
@@ -91,7 +91,7 @@ export function construireRapport(
   perimetre = "Registre complet",
   aujourdHui: string = toISODate(new Date()),
 ): Rapport {
-  const calc = dossiers.map((d) => ({ d, c: calculerDelai(d.dateReception, d.delaiReglementaire, aujourdHui) }));
+  const calc = dossiers.map((d) => ({ d, c: delaiDuDossier(d, aujourdHui) }));
   const enCours = calc.filter((x) => !EST_CLOS(x.d.statut));
   const restants = enCours.map((x) => x.c.delaiRestant);
 
