@@ -36,7 +36,7 @@ export function themeEffectif(t: Theme = theme): "clair" | "sombre" {
 
 function appliquer() {
   if (typeof document === "undefined") return;
-  document.documentElement.dataset.theme = themeEffectif();
+  document.documentElement.dataset.apparence = themeEffectif();
 }
 
 export function definirTheme(t: Theme) {
