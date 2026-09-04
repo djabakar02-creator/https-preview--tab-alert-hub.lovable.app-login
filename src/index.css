@@ -1,0 +1,209 @@
+/* Polices embarquées (public/fonts, fonctionnement hors ligne / intranet),
+   avec repli sur Google Fonts si le fichier local est absent. */
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src:
+    url("/fonts/archivo-latin.woff2") format("woff2"),
+    url("https://fonts.gstatic.com/s/archivo/v25/k3kPo8UDI-1M0wlSV9XAw6lQkqWY8Q82sLydOxI.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo Black";
+  font-style: normal;
+  font-weight: 100 900; /* couvre tous les poids : pas de gras synthétique */
+  font-display: swap;
+  src:
+    url("/fonts/archivo-black-latin.woff2") format("woff2"),
+    url("https://fonts.gstatic.com/s/archivoblack/v23/HTxqL289NzCGg4MzN6KJ7eW6CYyF_g.woff2") format("woff2");
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ------------------------------------------------------------------ */
+/* Jetons de couleur                                                    */
+/*                                                                      */
+/* Toute couleur passe par un jeton : le thème sombre n'est pas une     */
+/* inversion automatique, mais un second jeu de valeurs choisi.         */
+/* `fort` est le fond des éléments pleins et `sur-fort` le texte posé   */
+/* dessus : en clair un aplat sombre, en sombre un aplat clair.         */
+/* ------------------------------------------------------------------ */
+
+@layer base {
+  :root {
+    --paper: 247 244 238;
+    --card: 255 253 248;
+    --sand: 236 229 217;
+    --ink: 15 14 12;
+    --muted: 92 87 78;
+    --line: 20 18 15;
+    --hair: 201 193 178;
+    --fort: 15 14 12;
+    --sur-fort: 255 253 248;
+    --rouge: 209 15 28;
+    --sur-rouge: 255 255 255;
+    --ok: 24 107 69;
+    --ok-fond: 220 239 228;
+    --attention: 138 83 0;
+    --attention-fond: 250 235 208;
+    --voile: 15 14 12;
+    color-scheme: light;
+  }
+
+  :root[data-apparence="sombre"] {
+    --paper: 20 19 15;
+    --card: 29 27 22;
+    --sand: 40 36 25;
+    --ink: 242 238 228;
+    --muted: 164 157 144;
+    --line: 74 68 55;
+    --hair: 56 51 42;
+    --fort: 242 238 228;
+    --sur-fort: 20 19 15;
+    --rouge: 255 75 84;
+    --sur-rouge: 20 19 15;
+    --ok: 95 207 138;
+    --ok-fond: 23 48 31;
+    --attention: 224 163 64;
+    --attention-fond: 51 38 15;
+    --voile: 0 0 0;
+    color-scheme: dark;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    @apply bg-paper text-ink font-sans antialiased;
+    margin: 0;
+  }
+
+  /* Si Archivo Black n'est pas disponible, la police de repli reste très grasse. */
+  .font-display {
+    font-weight: 900;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: rgb(var(--rouge));
+  }
+
+  /* Un seul anneau de focus dans toute l'application. */
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    @apply outline-2 outline-offset-2 outline-rouge;
+    outline-style: solid;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Contrôles                                                            */
+/*                                                                      */
+/* Une seule échelle de hauteurs : 36 px par défaut, 28 px en petit.    */
+/* Boutons et champs partagent la même, pour qu'une rangée mêlant les   */
+/* deux reste alignée.                                                  */
+/* ------------------------------------------------------------------ */
+
+@layer components {
+  .label-caps {
+    @apply text-[11px] font-bold uppercase tracking-[0.18em];
+  }
+
+  .btn {
+    @apply inline-flex h-9 items-center justify-center gap-2 whitespace-nowrap border px-4
+      text-[11px] font-bold uppercase tracking-[0.16em] transition-colors
+      disabled:cursor-not-allowed disabled:opacity-40;
+  }
+
+  .btn-ghost {
+    @apply btn border-ink/45 text-ink hover:border-ink hover:bg-fort hover:text-sur-fort
+      disabled:hover:border-ink/45 disabled:hover:bg-transparent disabled:hover:text-ink;
+  }
+
+  .btn-fort {
+    @apply btn border-fort bg-fort text-sur-fort hover:opacity-85;
+  }
+
+  .btn-danger {
+    @apply btn border-rouge text-rouge hover:bg-rouge hover:text-sur-rouge
+      disabled:hover:bg-transparent disabled:hover:text-rouge;
+  }
+
+  .btn-sm {
+    @apply inline-flex h-7 items-center justify-center gap-1.5 whitespace-nowrap border border-ink/45 px-2.5
+      text-[10px] font-bold uppercase tracking-[0.14em] transition-colors
+      hover:border-ink hover:bg-fort hover:text-sur-fort
+      disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-ink/45
+      disabled:hover:bg-transparent disabled:hover:text-ink;
+  }
+
+  /* Bouton pleine largeur de l'écran de connexion. */
+  .btn-primary {
+    @apply flex h-12 w-full items-center justify-center border border-rouge bg-rouge
+      text-[11px] font-bold uppercase tracking-[0.18em] text-sur-rouge transition
+      hover:opacity-90 active:translate-y-px disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .field {
+    @apply h-9 w-full border border-ink/35 bg-card px-3 text-sm text-ink
+      outline-none transition-colors placeholder:text-muted focus:border-rouge;
+  }
+
+  /* Zone de texte : même style, hauteur libre. */
+  textarea.field {
+    @apply h-auto py-2 leading-relaxed;
+  }
+
+  .input-line {
+    @apply w-full border-0 border-b-2 border-ink/70 bg-transparent px-0 py-2 text-base
+      text-ink outline-none transition-colors focus:border-rouge;
+  }
+
+  .card {
+    @apply border border-line bg-card;
+  }
+
+  /* Puce de filtre : même hauteur que les petits boutons. */
+  .puce {
+    @apply inline-flex h-7 items-center gap-1.5 whitespace-nowrap border px-2.5
+      text-[11px] font-semibold transition-colors;
+  }
+
+  .puce-inactive {
+    @apply puce border-ink/35 text-ink hover:border-ink;
+  }
+
+  .puce-active {
+    @apply puce border-fort bg-fort text-sur-fort;
+  }
+
+  /* Élément de liste cliquable (suggestions d'Ora) : aligné sur les puces,
+     mais aligné à gauche et sur plusieurs lignes. */
+  .btn-liste {
+    @apply block w-full border border-hair bg-paper px-3 py-2 text-left text-xs
+      leading-snug transition-colors hover:border-rouge hover:text-rouge
+      disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-hair
+      disabled:hover:text-ink;
+  }
+}
+
+/* Arc de l'avatar d'Ora : tourne pendant la réflexion. */
+.ora-actif .ora-arc {
+  transform-origin: 24px 26px;
+  animation: ora-tour 1.4s linear infinite;
+}
+@keyframes ora-tour {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ora-actif .ora-arc {
+    animation: none;
+  }
+}
