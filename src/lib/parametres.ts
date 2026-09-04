@@ -36,7 +36,9 @@ export interface EntreeHistorique {
 export interface DelaiParType {
   jours: number;
   ouvres: boolean;
-  source: "catalogue" | "defaut" | "parametre";
+  source: "instruction" | "catalogue" | "defaut" | "parametre";
+  /** Texte cité en regard, quand `source` est « instruction ». */
+  reference?: string;
 }
 
 export const ROLE_LABELS: Record<RoleCompte, string> = {

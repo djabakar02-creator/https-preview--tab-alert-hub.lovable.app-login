@@ -333,6 +333,7 @@ function DelaiForm({
 }
 
 const SOURCE_LABEL: Record<string, string> = {
+  instruction: "Texte réglementaire BEAC",
   catalogue: "Catalogue du service",
   defaut: "Valeur de travail, à confirmer",
   parametre: "Fixé par le service",
@@ -364,7 +365,10 @@ function DelaisSection({ signaler }: { signaler: (m: string) => void }) {
                   <td className="px-3 py-2.5 text-right font-bold tabular-nums">{d.jours} j</td>
                   <td className="px-3 py-2.5 text-muted text-xs">{d.ouvres ? "Jours ouvrés" : "Jours calendaires"}</td>
                   <td className="px-3 py-2.5">
-                    <span className={`text-xs ${d.source === "defaut" ? "text-attention font-semibold" : "text-muted"}`}>{SOURCE_LABEL[d.source]}</span>
+                    <span className={`text-xs ${d.source === "defaut" ? "text-attention font-semibold" : "text-muted"}`} title={d.reference ?? ""}>
+                      {SOURCE_LABEL[d.source]}
+                    </span>
+                    {d.reference && <span className="block text-[10px] text-muted mt-0.5">{d.reference}</span>}
                   </td>
                   <td className="px-3 py-2.5 text-right">
                     <button type="button" className="btn-sm" onClick={() => setEdite(t)}>

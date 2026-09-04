@@ -72,7 +72,18 @@ describe("catalogue des opérations", () => {
   it("distingue un délai du catalogue d'une valeur de travail", () => {
     expect(DELAIS.portefeuille_sortant).toEqual({ jours: 60, ouvres: true, source: "catalogue" });
     const aConfirmer = Object.values(DELAIS).filter((d) => d.source === "defaut");
-    expect(aConfirmer).toHaveLength(8);
+    expect(aConfirmer).toHaveLength(7);
+  });
+
+  it("reprend le délai d'une instruction publiée, avec sa référence", () => {
+    // Instruction n° 001/GR/2019, art. 4 : 30 jours ouvrés, silence de la
+    // Banque centrale passé ce délai vaut acceptation.
+    expect(DELAIS.import_billets).toEqual({
+      jours: 30,
+      ouvres: true,
+      source: "instruction",
+      reference: "Instruction n° 001/GR/2019 du 10 juin 2019, art. 4",
+    });
   });
 
   it("donne un intitulé court à chaque type", () => {

@@ -57,11 +57,15 @@ export const SOUS_TYPES = {
 /**
  * Délai réglementaire par type.
  *
- * `source: "catalogue"` — le délai figure au catalogue du service.
- * `source: "defaut"`    — VALEUR DE TRAVAIL, à confirmer par le service. Le
- *                          catalogue ne la précise pas, et un délai
- *                          réglementaire ne s'invente pas. Elle reste modifiable
- *                          dossier par dossier.
+ * `source: "instruction"` — le délai figure dans une instruction du
+ *                            Gouverneur publiée, citée dans `reference`. La
+ *                            confirmation la plus sûre : un texte signé.
+ * `source: "catalogue"`   — le délai figure au catalogue du service, sans
+ *                            texte réglementaire cité en regard.
+ * `source: "defaut"`      — VALEUR DE TRAVAIL, à confirmer par le service. Ni
+ *                            le catalogue ni aucune instruction connue ne la
+ *                            précise, et un délai réglementaire ne s'invente
+ *                            pas. Elle reste modifiable dossier par dossier.
  *
  * `ouvres: true` compte en jours ouvrés (samedi et dimanche exclus).
  */
@@ -72,7 +76,12 @@ export const DELAIS = {
   portefeuille_sortant: { jours: 60, ouvres: true, source: "catalogue" },
   valeurs_mobilieres: { jours: 30, ouvres: false, source: "defaut" },
   bureau_de_change: { jours: 30, ouvres: false, source: "defaut" },
-  import_billets: { jours: 30, ouvres: false, source: "defaut" },
+  import_billets: {
+    jours: 30,
+    ouvres: true,
+    source: "instruction",
+    reference: "Instruction n° 001/GR/2019 du 10 juin 2019, art. 4",
+  },
   compte_devises_cemac: { jours: 30, ouvres: false, source: "defaut" },
   compte_devises_hors_cemac: { jours: 30, ouvres: false, source: "defaut" },
 };

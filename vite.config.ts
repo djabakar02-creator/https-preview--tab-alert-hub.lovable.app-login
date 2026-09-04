@@ -16,5 +16,5 @@ export default defineConfig({
     proxy: { "/api": { target: process.env.ORA_SERVICE || "http://localhost:8787", changeOrigin: true } },
   },
   build: ficheUnique ? { rollupOptions: { output: { inlineDynamicImports: true } } } : undefined,
-  test: { environment: "node", include: ["src/**/*.test.ts", "server/**/*.test.mjs"] },
+  test: { environment: "node", include: ["src/**/*.test.ts", "server/**/*.test.mjs", "shared/**/*.test.mjs"] },
 } as Parameters<typeof defineConfig>[0]);
