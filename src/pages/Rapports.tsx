@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { formatClock, formatNombreFR } from "../lib/dates";
+import { addDays, formatClock, formatDateFR, formatNombreFR, toISODate } from "../lib/dates";
 import { TYPE_COURT, TYPE_LABELS, toCSV, useDossiers, type TypeDossier } from "../lib/dossiers";
 import { ecrireTypes, lireTypes } from "../lib/filtres";
-import { construireRapport, type Rapport } from "../lib/rapport";
+import { construireRapport, dansPeriode, type Rapport } from "../lib/rapport";
 import { Section } from "../components/ui";
 import { telechargerFichier, type CanalTelechargement } from "../lib/telechargement";
 
@@ -16,6 +16,14 @@ const TEINTE_NIVEAU: Record<string, string> = {
   urgent: "bg-rouge",
   depasse: "bg-ink",
 };
+
+/** Raccourcis de période, calculés à l'instant du clic pour rester exacts d'un jour sur l'autre. */
+const PERIODES_RAPIDES: { label: string; du: () => string; au: () => string }[] = [
+  { label: "7 derniers jours", du: () => addDays(toISODate(new Date()), -6), au: () => toISODate(new Date()) },
+  { label: "30 derniers jours", du: () => addDays(toISODate(new Date()), -29), au: () => toISODate(new Date()) },
+  { label: "Ce mois-ci", du: () => toISODate(new Date()).slice(0, 8) + "01", au: () => toISODate(new Date()) },
+  { label: "Cette année", du: () => `${new Date().getFullYear()}-01-01`, au: () => toISODate(new Date()) },
+];
 
 /** Barre de magnitude, série unique : une seule teinte, valeur affichée à droite. */
 function Barre({
@@ -97,13 +105,37 @@ export default function Rapports() {
     setParams(p, { replace: true });
   };
 
-  const retenus = useMemo(
-    () => (types.length ? dossiers.filter((d) => types.includes(d.type)) : dossiers),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [dossiers, params.get("types")],
-  );
+  /* Période de réception, en jours calendaires. Bornes vides : illimité. */
+  const du = params.get("du") ?? "";
+  const au = params.get("au") ?? "";
+  const setPeriode = (nDu: string, nAu: string) => {
+    const p = new URLSearchParams(params);
+    if (nDu) p.set("du", nDu);
+    else p.delete("du");
+    if (nAu) p.set("au", nAu);
+    else p.delete("au");
+    setParams(p, { replace: true });
+  };
+  const periodeInvalide = Boolean(du && au && du > au);
 
-  const perimetre = types.length ? types.map((t) => TYPE_LABELS[t]).join(", ") : "Tous types d'opération";
+  const retenus = useMemo(() => {
+    let liste = types.length ? dossiers.filter((d) => types.includes(d.type)) : dossiers;
+    if (!periodeInvalide && (du || au)) liste = liste.filter((d) => dansPeriode(d.dateReception, du, au));
+    return liste;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dossiers, params.get("types"), params.get("du"), params.get("au")]);
+
+  const perimetreType = types.length ? types.map((t) => TYPE_LABELS[t]).join(", ") : "Tous types d'opération";
+  const perimetrePeriode = periodeInvalide
+    ? ""
+    : du && au
+      ? `reçus du ${formatDateFR(du)} au ${formatDateFR(au)}`
+      : du
+        ? `reçus à partir du ${formatDateFR(du)}`
+        : au
+          ? `reçus jusqu'au ${formatDateFR(au)}`
+          : "";
+  const perimetre = [perimetreType, perimetrePeriode].filter(Boolean).join(" · ");
 
   /* Le rapport est figé à la date de génération ; « Actualiser » le recalcule. */
   const rapport = useMemo(
@@ -214,6 +246,34 @@ export default function Rapports() {
             );
           })}
         </div>
+      </div>
+
+      {/* Période de réception, en jours calendaires. */}
+      <div className="card p-4">
+        <div className="flex items-center justify-between gap-3 mb-2">
+          <p className="label-caps text-[10px] text-muted">Période de réception</p>
+          <button type="button" className="btn-sm" disabled={!du && !au} onClick={() => setPeriode("", "")}>
+            Toute la période
+          </button>
+        </div>
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block">
+            <span className="text-[10px] text-muted block mb-1">Du</span>
+            <input type="date" className="field" value={du} max={au || undefined} onChange={(e) => setPeriode(e.target.value, au)} />
+          </label>
+          <label className="block">
+            <span className="text-[10px] text-muted block mb-1">Au</span>
+            <input type="date" className="field" value={au} min={du || undefined} onChange={(e) => setPeriode(du, e.target.value)} />
+          </label>
+          <div className="flex flex-wrap gap-1.5 pb-0.5">
+            {PERIODES_RAPIDES.map((p) => (
+              <button key={p.label} type="button" className="puce-inactive" onClick={() => setPeriode(p.du(), p.au())}>
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        {periodeInvalide && <p className="text-xs text-rouge mt-2">La date de début doit précéder la date de fin. Période ignorée.</p>}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

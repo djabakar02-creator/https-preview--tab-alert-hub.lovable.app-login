@@ -96,6 +96,18 @@ const moyenne = (v: number[]): number | null => (v.length ? Math.round(v.reduce(
 const part = (n: number, total: number) => (total ? Math.round((n / total) * 100) : 0);
 
 /**
+ * Un dossier reçu le `dateReception` tombe-t-il dans l'intervalle [du, au] ?
+ * Bornes ISO (jours calendaires), incluses ; une borne vide ne limite pas.
+ * Comparaison lexicographique : valable tant que les dates restent au
+ * format AAAA-MM-JJ, qu'elle trie dans le même ordre que le calendrier.
+ */
+export function dansPeriode(dateReception: string, du: string, au: string): boolean {
+  if (du && dateReception < du) return false;
+  if (au && dateReception > au) return false;
+  return true;
+}
+
+/**
  * Date de clôture d'un dossier (validation ou rejet), retrouvée dans son
  * historique. Un dossier clos sans cet événement — importé déjà clos, par
  * exemple — n'entre pas dans les moyennes de délai de traitement : mieux

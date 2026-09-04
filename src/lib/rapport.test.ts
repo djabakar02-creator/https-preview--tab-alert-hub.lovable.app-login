@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { construireRapport } from "./rapport";
+import { construireRapport, dansPeriode } from "./rapport";
 import { piecesRequises, type Dossier, type Statut } from "./dossiers";
 import { addDays, toISODate } from "./dates";
 
@@ -23,6 +23,27 @@ function d(over: Partial<Dossier> = {}): Dossier {
     ...over,
   };
 }
+
+describe("dansPeriode", () => {
+  it("accepte tout sans bornes", () => {
+    expect(dansPeriode("2026-05-15", "", "")).toBe(true);
+  });
+
+  it("respecte la borne basse, incluse", () => {
+    expect(dansPeriode("2026-05-15", "2026-05-15", "")).toBe(true);
+    expect(dansPeriode("2026-05-14", "2026-05-15", "")).toBe(false);
+  });
+
+  it("respecte la borne haute, incluse", () => {
+    expect(dansPeriode("2026-05-15", "", "2026-05-15")).toBe(true);
+    expect(dansPeriode("2026-05-16", "", "2026-05-15")).toBe(false);
+  });
+
+  it("respecte les deux bornes à la fois", () => {
+    expect(dansPeriode("2026-05-10", "2026-05-01", "2026-05-31")).toBe(true);
+    expect(dansPeriode("2026-06-01", "2026-05-01", "2026-05-31")).toBe(false);
+  });
+});
 
 describe("construireRapport — comptages", () => {
   it("sépare les dossiers en cours des dossiers clos", () => {
