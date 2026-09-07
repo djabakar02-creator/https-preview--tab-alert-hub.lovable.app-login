@@ -46,6 +46,11 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 024/GVR/2019 du 12 novembre 2019");
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 025/GR/2019 du 9 décembre 2019");
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 011/GR/2020 du 6 août 2020");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 004/GR/2020 du 17 mars 2020");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 014/GR/2020 du 5 octobre 2020");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 015/GR/2020 du 3 novembre 2020");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 003/GR/2021 du 8 avril 2021");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 004/GR/2022 du 22 juin 2022");
   });
 
   it("retient le délai et l'acceptation tacite de l'Instruction n° 001/GR/2019", () => {
@@ -257,6 +262,34 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
   it("retient la date de mise en production d'eTransfer (Lettre circulaire n° 011/GR/2020)", () => {
     expect(TEXTES_REFERENCE).toContain("le 1er septembre 2020");
     expect(TEXTES_REFERENCE).toContain("eTransfer");
+  });
+
+  it("distingue les Trésors publics des agents économiques privés du catalogue (Lettre circulaire n° 004/GR/2020)", () => {
+    expect(TEXTES_REFERENCE).toContain("Trésors et Comptables Publics Nationaux pour les transferts hors zone");
+    expect(TEXTES_REFERENCE).toContain("dont le type « Prêt à un non-résident » exclut d'ailleurs explicitement l'État");
+  });
+
+  it("retient le délai d'un an pour l'acte définitif d'acquisition ou de cession (Lettre circulaire n° 014/GR/2020)", () => {
+    expect(TEXTES_REFERENCE).toContain("demande d'autorisation des acquisitions hors CEMAC de biens immobiliers par les résidents");
+    expect(TEXTES_REFERENCE).toContain("un délai ne dépassant pas un an");
+    expect(TEXTES_REFERENCE).toContain(
+      "à ne pas confondre avec le délai de réponse de la Banque centrale à la demande elle-même",
+    );
+  });
+
+  it("retient le principe de calcul du taux de couverture extérieure à l'échelle CEMAC (Lettre circulaire n° 015/GR/2020)", () => {
+    expect(TEXTES_REFERENCE).toContain("au moins 20 % à tout instant");
+  });
+
+  it("retient les modalités d'apurement et de rejet automatique des transferts (Lettre circulaire n° 003/GR/2021)", () => {
+    expect(TEXTES_REFERENCE).toContain("entraîne le rejet automatique par la Banque centrale");
+    expect(TEXTES_REFERENCE).toContain("désactivés dans l'application eTransfer");
+  });
+
+  it("retient le délai de justification de 30 jours des instruments de paiement électronique (Lettre circulaire n° 004/GR/2022)", () => {
+    expect(TEXTES_REFERENCE).toContain("ne pouvant excéder trente (30) jours à compter de la réalisation de l'opération");
+    expect(TEXTES_REFERENCE).toContain("sous huitaine (8 jours)");
+    expect(TEXTES_REFERENCE).toContain("2 millions pour les étudiants");
   });
 
   it("est bien intégré à la consigne système envoyée au modèle", () => {
