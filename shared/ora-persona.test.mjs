@@ -8,7 +8,7 @@ import { SYSTEM_ORA, TEXTES_REFERENCE } from "./ora-persona.mjs";
  * la consigne elle-même qualifie de grave.
  */
 describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
-  it("cite les vingt instructions par leur numéro et leur date", () => {
+  it("cite les vingt-et-une instructions par leur numéro et leur date", () => {
     expect(TEXTES_REFERENCE).toContain("Instruction n° 001/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 002/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 002/GR/2020 du 22 septembre 2020");
@@ -29,6 +29,9 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("Instruction n° 002/GR/2022 du 4 février 2022");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 003/GR/2022 du 4 février 2022");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 004/GR/2022 du 4 février 2022");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 005/GR/2022 du 20 juillet 2022");
+    expect(TEXTES_REFERENCE).toContain("Lettres circulaires n° 003/GR/2019 du 7 mars 2019 et n° 004/GR/2019 du 8 mars 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 001/GVR/2019 du 1er février 2019");
   });
 
   it("retient le délai et l'acceptation tacite de l'Instruction n° 001/GR/2019", () => {
@@ -142,6 +145,23 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
   it("retient le fonctionnement des comptes miroirs des établissements de crédit (Instruction n° 004/GR/2022)", () => {
     expect(TEXTES_REFERENCE).toContain("comptes miroirs de ceux ouverts par les agents économiques");
     expect(TEXTES_REFERENCE).toContain("ne peuvent pas présenter un solde débiteur");
+  });
+
+  it("retient les délais de rapatriement des Fonds financiers de réhabilitation (Instruction n° 005/GR/2022)", () => {
+    expect(TEXTES_REFERENCE).toContain("au plus tard le 30 juin 2023");
+    expect(TEXTES_REFERENCE).toContain("un délai de trois (3) ans à compter du 1er janvier 2022");
+    expect(TEXTES_REFERENCE).toContain("un tiers (1/3) au moins par an");
+  });
+
+  it("retient le délai d'exécution des transferts internationaux par les établissements de crédit (Lettres circulaires 003 et 004/GR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("article 34 de la Réglementation des changes");
+    expect(TEXTES_REFERENCE).toContain("deux (2) jours ouvrés suivant le dépôt de la demande");
+    expect(TEXTES_REFERENCE).toContain("traités en 48 heures");
+  });
+
+  it("exclut la note interne de gestion du personnel du lot transmis (Lettre circulaire n° 006/DGEFRI/2019)", () => {
+    expect(TEXTES_REFERENCE).not.toContain("CCETSRC");
+    expect(TEXTES_REFERENCE).toContain("n'a pas été retenue dans cette section");
   });
 
   it("est bien intégré à la consigne système envoyée au modèle", () => {
