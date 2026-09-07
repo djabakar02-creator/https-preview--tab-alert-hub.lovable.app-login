@@ -32,6 +32,11 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("Instruction n° 005/GR/2022 du 20 juillet 2022");
     expect(TEXTES_REFERENCE).toContain("Lettres circulaires n° 003/GR/2019 du 7 mars 2019 et n° 004/GR/2019 du 8 mars 2019");
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 001/GVR/2019 du 1er février 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 009/GVR/2019 du 8 mai 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 010/GR/2019 du 11 juin 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 012/GVR/2019 du 8 juillet 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 013/GVR/2019 du 10 juillet 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 014/GVR/2019 du 10 juillet 2019");
   });
 
   it("retient le délai et l'acceptation tacite de l'Instruction n° 001/GR/2019", () => {
@@ -162,6 +167,31 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
   it("exclut la note interne de gestion du personnel du lot transmis (Lettre circulaire n° 006/DGEFRI/2019)", () => {
     expect(TEXTES_REFERENCE).not.toContain("CCETSRC");
     expect(TEXTES_REFERENCE).toContain("n'a pas été retenue dans cette section");
+  });
+
+  it("retient les règles de régularisation des comptes en devises des résidents (Lettre circulaire n° 009/GVR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("article 43 du Règlement");
+    expect(TEXTES_REFERENCE).toContain("163, 164, 165, 169, 175 et 179");
+  });
+
+  it("retient le régime des comptes en devises des non-résidents et des chefs de mission diplomatique (Lettre circulaire n° 010/GR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("un délai de 30 jours et de la fourniture des pièces justificatives");
+    expect(TEXTES_REFERENCE).toContain("5 000 000 F CFA par personne et par voyage");
+    expect(TEXTES_REFERENCE).toContain("un délai de 90 jours à compter du retrait");
+  });
+
+  it("retient les messages SWIFT de couverture des soldes débiteurs (Lettre circulaire n° 012/GVR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("Western Union, MoneyGram, RIA");
+    expect(TEXTES_REFERENCE).toContain("MT940/MT950 pour les extraits de compte");
+  });
+
+  it("signale la divergence du tableau de la Lettre circulaire n° 013/GVR/2019 sans la reprendre comme un fait", () => {
+    expect(TEXTES_REFERENCE).toContain("indique par erreur « cinq (05) jours ouvrés »");
+    expect(TEXTES_REFERENCE).toContain("retiens 3 jours ouvrés");
+  });
+
+  it("retient le délai pratique de rétrocession à J+3 (Lettre circulaire n° 014/GVR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("à J+3 au plus tard");
   });
 
   it("est bien intégré à la consigne système envoyée au modèle", () => {
