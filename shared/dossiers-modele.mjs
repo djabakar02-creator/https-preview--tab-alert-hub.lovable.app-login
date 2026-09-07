@@ -75,7 +75,12 @@ export const DELAIS = {
   pret_non_resident: { jours: 30, ouvres: false, source: "defaut" },
   portefeuille_sortant: { jours: 60, ouvres: true, source: "catalogue" },
   valeurs_mobilieres: { jours: 30, ouvres: false, source: "defaut" },
-  bureau_de_change: { jours: 30, ouvres: false, source: "defaut" },
+  bureau_de_change: {
+    jours: 60,
+    ouvres: false,
+    source: "instruction",
+    reference: "Instruction n° 011/GR/2019 du 10 juin 2019, art. 25 (2 mois, silence vaut avis conforme)",
+  },
   import_billets: {
     jours: 30,
     ouvres: true,

@@ -72,7 +72,7 @@ describe("catalogue des opérations", () => {
   it("distingue un délai du catalogue d'une valeur de travail", () => {
     expect(DELAIS.portefeuille_sortant).toEqual({ jours: 60, ouvres: true, source: "catalogue" });
     const aConfirmer = Object.values(DELAIS).filter((d) => d.source === "defaut");
-    expect(aConfirmer).toHaveLength(7);
+    expect(aConfirmer).toHaveLength(6);
   });
 
   it("reprend le délai d'une instruction publiée, avec sa référence", () => {
@@ -83,6 +83,14 @@ describe("catalogue des opérations", () => {
       ouvres: true,
       source: "instruction",
       reference: "Instruction n° 001/GR/2019 du 10 juin 2019, art. 4",
+    });
+    // Instruction n° 011/GR/2019, art. 25 : 2 mois, silence de la Banque
+    // centrale passé ce délai vaut avis conforme délivré.
+    expect(DELAIS.bureau_de_change).toEqual({
+      jours: 60,
+      ouvres: false,
+      source: "instruction",
+      reference: "Instruction n° 011/GR/2019 du 10 juin 2019, art. 25 (2 mois, silence vaut avis conforme)",
     });
   });
 

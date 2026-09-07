@@ -8,7 +8,7 @@ import { SYSTEM_ORA, TEXTES_REFERENCE } from "./ora-persona.mjs";
  * la consigne elle-même qualifie de grave.
  */
 describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
-  it("cite les dix instructions par leur numéro et leur date", () => {
+  it("cite les quinze instructions par leur numéro et leur date", () => {
     expect(TEXTES_REFERENCE).toContain("Instruction n° 001/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 002/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 002/GR/2020 du 22 septembre 2020");
@@ -19,6 +19,11 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("Instruction n° 007/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 008/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 009/GR/2019 du 10 juin 2019");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 010/GR/2019 du 10 juin 2019");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 011/GR/2019 du 10 juin 2019");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 012/GR/2019 du 10 juin 2019");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 013/GR/2019 du 10 juin 2019");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 014/GR/2019 du 10 juin 2019");
   });
 
   it("retient le délai et l'acceptation tacite de l'Instruction n° 001/GR/2019", () => {
@@ -72,10 +77,43 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
   });
 
   it("récapitule la correspondance avec le catalogue, sans laisser croire à une couverture plus large", () => {
-    expect(TEXTES_REFERENCE).toContain("trois bénéficient d'un texte cité ci-dessus");
+    expect(TEXTES_REFERENCE).toContain("cinq bénéficient d'un texte cité ci-dessus");
     expect(TEXTES_REFERENCE).toContain(
-      "Les cinq autres types — immobilier hors CEMAC, investissement direct à l'étranger, prêt à un non-résident, investissement de portefeuille sortant, valeurs mobilières — n'ont aucun texte applicable",
+      "Les quatre autres types — immobilier hors CEMAC, investissement direct à l'étranger, prêt à un non-résident, investissement de portefeuille sortant — n'ont aucun texte applicable",
     );
+  });
+
+  it("retient le délai d'approvisionnement en devises de la Banque centrale (Instruction n° 010/GR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("2 jours ouvrés");
+    expect(TEXTES_REFERENCE).toContain("moins de 12 mois");
+  });
+
+  it("retient l'agrément et le délai d'avis conforme du bureau de change (Instruction n° 011/GR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("cinquante millions (50 000 000) Francs CFA");
+    expect(TEXTES_REFERENCE).toContain("délai de deux (2) mois");
+    expect(TEXTES_REFERENCE).toContain("considéré comme délivré");
+    expect(TEXTES_REFERENCE).toContain("délai maximum d'un (1) an");
+  });
+
+  it("retient les deux délais des valeurs mobilières étrangères (Instruction n° 012/GR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("50 millions de Francs CFA");
+    expect(TEXTES_REFERENCE).toContain("délai de 30 jours à compter de la réception du dossier complet");
+    expect(TEXTES_REFERENCE).toContain("délai de 10 jours ouvrés");
+    expect(TEXTES_REFERENCE).toContain("réputée accordée");
+  });
+
+  it("retient les délais de déclaration périodique (Instruction n° 013/GR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("100 millions de Francs CFA");
+    expect(TEXTES_REFERENCE).toContain("au moins 30 jours avant leur réalisation");
+    expect(TEXTES_REFERENCE).toContain("30 jours après leur réalisation");
+  });
+
+  it("retient les délais et plafonds de la procédure de sanction (Instruction n° 014/GR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("délai de huit (08) jours");
+    expect(TEXTES_REFERENCE).toContain("quinze (15) jours");
+    expect(TEXTES_REFERENCE).toContain("pénalité de 5 % par jour de retard");
+    expect(TEXTES_REFERENCE).toContain("15 % des fonds propres");
+    expect(TEXTES_REFERENCE).toContain("50 % des fonds propres");
   });
 
   it("est bien intégré à la consigne système envoyée au modèle", () => {
