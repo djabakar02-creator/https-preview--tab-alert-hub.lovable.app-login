@@ -42,6 +42,10 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 017/GVR/2019 du 13 août 2019");
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 018/GVR/2019 du 14 août 2019");
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 021/GR/2019 du 7 octobre 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettres circulaires n° 022/GVR/2019 et n° 023/GVR/2019 du 6 novembre 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 024/GVR/2019 du 12 novembre 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 025/GR/2019 du 9 décembre 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 011/GR/2020 du 6 août 2020");
   });
 
   it("retient le délai et l'acceptation tacite de l'Instruction n° 001/GR/2019", () => {
@@ -94,9 +98,13 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("La vente de devises à la clientèle par les sous-délégataires est prohibée");
   });
 
-  it("récapitule la correspondance avec le catalogue, sans laisser croire à une couverture plus large", () => {
-    expect(TEXTES_REFERENCE).toContain("huit bénéficient d'un texte cité ci-dessus");
-    expect(TEXTES_REFERENCE).toContain("Un seul type reste sans texte applicable dans cette section : le prêt à un non-résident");
+  it("récapitule la correspondance avec le catalogue, sans laisser croire à une couverture uniforme", () => {
+    expect(TEXTES_REFERENCE).toContain("les neuf bénéficient désormais d'un texte cité ci-dessus");
+    expect(TEXTES_REFERENCE).toContain("ne le confonds jamais avec une couverture uniforme");
+    expect(TEXTES_REFERENCE).toContain(
+      "Le neuvième type, le prêt à un non-résident (autre qu'un établissement de crédit ou l'État), n'a de confirmé que l'exigence d'une autorisation préalable de la Banque centrale",
+    );
+    expect(TEXTES_REFERENCE).toContain("aucun texte ne précise ni le délai de réponse, ni la procédure complète de la demande");
   });
 
   it("retient le délai d'approvisionnement en devises de la Banque centrale (Instruction n° 010/GR/2019)", () => {
@@ -224,6 +232,31 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("plus de 5 % du cours de référence");
     expect(TEXTES_REFERENCE).toContain("plus de 3 %");
     expect(TEXTES_REFERENCE).toContain("au plus tard à 9 heures 30");
+  });
+
+  it("retient l'enveloppe hebdomadaire de devises pour les opérations de faibles montants (Lettres circulaires 022 et 023/GVR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("50 millions de Francs CFA");
+    expect(TEXTES_REFERENCE).toContain("3 millions d'euros");
+    expect(TEXTES_REFERENCE).toContain("le fractionnement des opérations");
+  });
+
+  it("retient les échéances de mise en conformité du secteur minier et pétrolier (Lettre circulaire n° 024/GVR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("au plus tard le 31 janvier 2020");
+    expect(TEXTES_REFERENCE).toContain("jusqu'au 31 décembre 2020");
+    expect(TEXTES_REFERENCE).toContain("fonds RES");
+  });
+
+  it("confirme l'exigence d'autorisation pour les prêts aux non-résidents, sans délai (Lettre circulaire n° 025/GR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("Prêts aux non-résidents (autorisation de la Banque Centrale");
+    expect(TEXTES_REFERENCE).toContain(
+      "confirme, pour la première fois dans les textes cités ici, que le type « Prêt à un non-résident",
+    );
+    expect(TEXTES_REFERENCE).toContain("sans toutefois préciser aucun délai de réponse");
+  });
+
+  it("retient la date de mise en production d'eTransfer (Lettre circulaire n° 011/GR/2020)", () => {
+    expect(TEXTES_REFERENCE).toContain("le 1er septembre 2020");
+    expect(TEXTES_REFERENCE).toContain("eTransfer");
   });
 
   it("est bien intégré à la consigne système envoyée au modèle", () => {
