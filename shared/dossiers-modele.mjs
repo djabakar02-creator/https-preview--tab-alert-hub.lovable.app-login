@@ -71,9 +71,19 @@ export const SOUS_TYPES = {
  */
 export const DELAIS = {
   immobilier_hors_cemac: { jours: 30, ouvres: false, source: "defaut" },
-  investissement_direct: { jours: 30, ouvres: false, source: "defaut" },
+  investissement_direct: {
+    jours: 60,
+    ouvres: true,
+    source: "instruction",
+    reference: "Instruction n° 003/GR/2020 du 15 octobre 2020, art. 12 (hors acquisition immobilière)",
+  },
   pret_non_resident: { jours: 30, ouvres: false, source: "defaut" },
-  portefeuille_sortant: { jours: 60, ouvres: true, source: "catalogue" },
+  portefeuille_sortant: {
+    jours: 60,
+    ouvres: true,
+    source: "instruction",
+    reference: "Instruction n° 003/GR/2020 du 15 octobre 2020, art. 26",
+  },
   valeurs_mobilieres: { jours: 30, ouvres: false, source: "defaut" },
   bureau_de_change: {
     jours: 60,

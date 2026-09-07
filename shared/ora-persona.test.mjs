@@ -8,7 +8,7 @@ import { SYSTEM_ORA, TEXTES_REFERENCE } from "./ora-persona.mjs";
  * la consigne elle-même qualifie de grave.
  */
 describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
-  it("cite les quinze instructions par leur numéro et leur date", () => {
+  it("cite les vingt instructions par leur numéro et leur date", () => {
     expect(TEXTES_REFERENCE).toContain("Instruction n° 001/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 002/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 002/GR/2020 du 22 septembre 2020");
@@ -24,6 +24,11 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("Instruction n° 012/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 013/GR/2019 du 10 juin 2019");
     expect(TEXTES_REFERENCE).toContain("Instruction n° 014/GR/2019 du 10 juin 2019");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 003/GR/2020 du 15 octobre 2020");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 001/GR/2022 du 4 février 2022");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 002/GR/2022 du 4 février 2022");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 003/GR/2022 du 4 février 2022");
+    expect(TEXTES_REFERENCE).toContain("Instruction n° 004/GR/2022 du 4 février 2022");
   });
 
   it("retient le délai et l'acceptation tacite de l'Instruction n° 001/GR/2019", () => {
@@ -77,10 +82,8 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
   });
 
   it("récapitule la correspondance avec le catalogue, sans laisser croire à une couverture plus large", () => {
-    expect(TEXTES_REFERENCE).toContain("cinq bénéficient d'un texte cité ci-dessus");
-    expect(TEXTES_REFERENCE).toContain(
-      "Les quatre autres types — immobilier hors CEMAC, investissement direct à l'étranger, prêt à un non-résident, investissement de portefeuille sortant — n'ont aucun texte applicable",
-    );
+    expect(TEXTES_REFERENCE).toContain("huit bénéficient d'un texte cité ci-dessus");
+    expect(TEXTES_REFERENCE).toContain("Un seul type reste sans texte applicable dans cette section : le prêt à un non-résident");
   });
 
   it("retient le délai d'approvisionnement en devises de la Banque centrale (Instruction n° 010/GR/2019)", () => {
@@ -114,6 +117,31 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("pénalité de 5 % par jour de retard");
     expect(TEXTES_REFERENCE).toContain("15 % des fonds propres");
     expect(TEXTES_REFERENCE).toContain("50 % des fonds propres");
+  });
+
+  it("retient les délais confirmés de l'investissement direct et de portefeuille (Instruction n° 003/GR/2020)", () => {
+    expect(TEXTES_REFERENCE).toContain("au moins 10 % du capital");
+    expect(TEXTES_REFERENCE).toContain("délai de 60 jours ouvrés");
+    expect(TEXTES_REFERENCE).toContain("Ce délai est de 30 jours ouvrés pour les demandes d'investissement direct sortant sous forme d'acquisition immobilière à des fins d'habitation");
+    expect(TEXTES_REFERENCE).toContain("inférieur à 20 millions de Francs CFA");
+    expect(TEXTES_REFERENCE).toContain("supérieur à 20 millions de Francs CFA");
+  });
+
+  it("retient les seuils et délais des importations/exportations du secteur extractif (Instructions 001 et 002/GR/2022)", () => {
+    expect(TEXTES_REFERENCE).toContain("dix (10) millions de FCFA");
+    expect(TEXTES_REFERENCE).toContain("soixante (60) jours suivant la fin du trimestre");
+    expect(TEXTES_REFERENCE).toContain("trois (3) mois, à compter de la date de règlement final");
+    expect(TEXTES_REFERENCE).toContain("cent mille (100 000) FCFA");
+  });
+
+  it("retient le délai confirmé des comptes en devises du secteur extractif (Instruction n° 003/GR/2022)", () => {
+    expect(TEXTES_REFERENCE).toContain("dans les 14 jours suivant sa réception");
+    expect(TEXTES_REFERENCE).toContain("emporte autorisation tacite d'ouverture du compte");
+  });
+
+  it("retient le fonctionnement des comptes miroirs des établissements de crédit (Instruction n° 004/GR/2022)", () => {
+    expect(TEXTES_REFERENCE).toContain("comptes miroirs de ceux ouverts par les agents économiques");
+    expect(TEXTES_REFERENCE).toContain("ne peuvent pas présenter un solde débiteur");
   });
 
   it("est bien intégré à la consigne système envoyée au modèle", () => {
