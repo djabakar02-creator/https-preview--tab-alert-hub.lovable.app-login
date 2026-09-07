@@ -51,6 +51,9 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 015/GR/2020 du 3 novembre 2020");
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 003/GR/2021 du 8 avril 2021");
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 004/GR/2022 du 22 juin 2022");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 002/GR/2022 du 11 mars 2022");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 005/GR/2022 du 27 septembre 2022");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 009/GR/2022 du 23 décembre 2022");
   });
 
   it("retient le délai et l'acceptation tacite de l'Instruction n° 001/GR/2019", () => {
@@ -251,12 +254,17 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("fonds RES");
   });
 
-  it("confirme l'exigence d'autorisation pour les prêts aux non-résidents, sans délai (Lettre circulaire n° 025/GR/2019)", () => {
+  it("signale que la Lettre circulaire n° 025/GR/2019 est abrogée, sans la citer comme source à jour", () => {
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 025/GR/2019 du 9 décembre 2019 — Documentation à fournir par la clientèle en fonction de la nature des opérations — ABROGÉE");
+    expect(TEXTES_REFERENCE).toContain("ABROGÉE par la Lettre circulaire n° 002/GR/2022");
+    expect(TEXTES_REFERENCE).toContain("Ne la cite plus comme source à jour");
+  });
+
+  it("confirme l'exigence d'autorisation pour les prêts aux non-résidents, sans délai (Lettre circulaire n° 002/GR/2022, en vigueur)", () => {
     expect(TEXTES_REFERENCE).toContain("Prêts aux non-résidents (autorisation de la Banque Centrale");
-    expect(TEXTES_REFERENCE).toContain(
-      "confirme, pour la première fois dans les textes cités ici, que le type « Prêt à un non-résident",
-    );
+    expect(TEXTES_REFERENCE).toContain("aujourd'hui en vigueur, confirme — dans les mêmes termes que la Lettre circulaire n° 025/GR/2019 qu'il abroge — que le type « Prêt à un non-résident");
     expect(TEXTES_REFERENCE).toContain("sans toutefois préciser aucun délai de réponse");
+    expect(TEXTES_REFERENCE).toContain("une simple déclaration a posteriori peut suffire");
   });
 
   it("retient la date de mise en production d'eTransfer (Lettre circulaire n° 011/GR/2020)", () => {
@@ -290,6 +298,19 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("ne pouvant excéder trente (30) jours à compter de la réalisation de l'opération");
     expect(TEXTES_REFERENCE).toContain("sous huitaine (8 jours)");
     expect(TEXTES_REFERENCE).toContain("2 millions pour les étudiants");
+  });
+
+  it("distingue le taux de rapatriement des RBL du taux de rétrocession général (Lettre circulaire n° 005/GR/2022)", () => {
+    expect(TEXTES_REFERENCE).toContain("resource-backed loans");
+    expect(TEXTES_REFERENCE).toContain("35 % des recettes d'exportations ne s'applique pas");
+    expect(TEXTES_REFERENCE).toContain(
+      "distincte du taux de rétrocession de 70 % de l'Instruction n° 003/GR/2019 ci-dessus",
+    );
+  });
+
+  it("signale l'absence du texte intégral de la Lettre circulaire n° 006/GR/2022 (Lettre circulaire n° 009/GR/2022)", () => {
+    expect(TEXTES_REFERENCE).toContain("dont le texte complet n'a pas été transmis à Ora, seule cette modification l'a été");
+    expect(TEXTES_REFERENCE).toContain("Ora ne dispose pas du texte intégral de la Lettre circulaire n° 006/GR/2022");
   });
 
   it("est bien intégré à la consigne système envoyée au modèle", () => {
