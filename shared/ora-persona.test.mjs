@@ -37,6 +37,11 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 012/GVR/2019 du 8 juillet 2019");
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 013/GVR/2019 du 10 juillet 2019");
     expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 014/GVR/2019 du 10 juillet 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 015/GR/2019 du 12 juillet 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 016/GVR/2019 du 12 juillet 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 017/GVR/2019 du 13 août 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 018/GVR/2019 du 14 août 2019");
+    expect(TEXTES_REFERENCE).toContain("Lettre circulaire n° 021/GR/2019 du 7 octobre 2019");
   });
 
   it("retient le délai et l'acceptation tacite de l'Instruction n° 001/GR/2019", () => {
@@ -192,6 +197,33 @@ describe("TEXTES_REFERENCE — faits chiffrés des instructions BEAC", () => {
 
   it("retient le délai pratique de rétrocession à J+3 (Lettre circulaire n° 014/GVR/2019)", () => {
     expect(TEXTES_REFERENCE).toContain("à J+3 au plus tard");
+  });
+
+  it("signale la divergence d'article (34 vs 35) entre les lettres sur le délai de 2 jours ouvrés", () => {
+    expect(TEXTES_REFERENCE).toContain("l'article 34 du Règlement pour ce délai");
+    expect(TEXTES_REFERENCE).toContain("cite l'article 35");
+  });
+
+  it("retient le mode de calcul et la sanction du délai d'exécution des transferts (Lettre circulaire n° 016/GVR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("Les ordres de virement liés aux transferts sont émis dans les 2 jours ouvrés");
+    expect(TEXTES_REFERENCE).toContain("amende de 3 % du montant de l'opération");
+  });
+
+  it("retient l'exigence de codification sectorielle des messages SWIFT (Lettre circulaire n° 017/GVR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("champ 26T");
+    expect(TEXTES_REFERENCE).toContain("S01");
+    expect(TEXTES_REFERENCE).toContain("S23");
+  });
+
+  it("retient le plafond de transfert des revenus de travail réglés en francs CFA (Lettre circulaire n° 018/GVR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("ne peut excéder 75 %");
+    expect(TEXTES_REFERENCE).toContain("les 15 janvier et 15 juillet");
+  });
+
+  it("retient les plafonds des cours de change du change manuel et des transferts (Lettre circulaire n° 021/GR/2019)", () => {
+    expect(TEXTES_REFERENCE).toContain("plus de 5 % du cours de référence");
+    expect(TEXTES_REFERENCE).toContain("plus de 3 %");
+    expect(TEXTES_REFERENCE).toContain("au plus tard à 9 heures 30");
   });
 
   it("est bien intégré à la consigne système envoyée au modèle", () => {
