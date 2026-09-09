@@ -23,7 +23,14 @@ html = html.replace(/<link rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/g, (_m, hre
 
 // Scripts → inline (le bundle Vite ne contient plus d'import externe)
 html = html.replace(/<script type="module"[^>]*src="([^"]+)"[^>]*><\/script>/g, (_m, src) => {
-  const js = readFileSync(resolve(dist, "." + src), "utf8").replace(/<\/script/g, "<\\/script");
+  const js = readFileSync(resolve(dist, "." + src), "utf8")
+    .replace(/<\/script/g, "<\\/script")
+    // Le décodeur UTF-8 de string_decoder (dépendance transitive) contient le
+    // caractère de remplacement U+FFFD en dur dans ses chaînes JS. Du JS valide,
+    // mais un octet que la publication d'artefact refuse en clair dans la page :
+    // on l'échappe en � (équivalent à l'exécution, dans une chaîne/regex/
+    // commentaire — le seul contexte où U+FFFD peut apparaître en JS valide).
+    .replace(/�/g, "\\ufffd");
   return `<script type="module">${js}</script>`;
 });
 
