@@ -1,0 +1,96 @@
+{
+  "name": "beac-drc-suivi-dossiers",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "service": "node server/index.mjs",
+    "build": "tsc -b && vite build",
+    "build:single": "tsc -b && VITE_ROUTER=hash vite build && node scripts/single-file.mjs",
+    "build:demo": "tsc -b && VITE_ROUTER=hash VITE_SANS_CLE=1 vite build && node scripts/single-file.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc -b --noEmit",
+    "test": "vitest run",
+    "desktop": "npm run build && electron .",
+    "dist:win": "npm run build && electron-builder --win --x64",
+    "dist:linux": "npm run build && electron-builder --linux",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win-portable": "npm run build && electron-builder --win --x64 -c.win.target=zip"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.26.2"
+  },
+  "devDependencies": {
+    "@types/node": "^26.4.1",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.13",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.8",
+    "vitest": "^2.1.1"
+  },
+  "main": "desktop/main.mjs",
+  "description": "Registre des dossiers d'autorisation de change — BEAC, Direction de la Réglementation des Changes",
+  "author": "BEAC · Direction de la Réglementation des Changes",
+  "license": "Apache-2.0",
+  "build": {
+    "appId": "cm.beac.drc.autorisations",
+    "productName": "BEAC-DRC Autorisations",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "server/**/*",
+      "shared/**/*",
+      "package.json",
+      "!server/**/*.test.mjs"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "artifactName": "${productName} ${version}.${ext}",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": [
+        "fr_FR"
+      ],
+      "shortcutName": "BEAC-DRC Autorisations"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Office"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.business"
+    }
+  }
+}
