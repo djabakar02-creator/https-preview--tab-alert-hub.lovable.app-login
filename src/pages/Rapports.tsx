@@ -149,17 +149,17 @@ export default function Rapports() {
     setTimeout(() => setMessage(null), 5000);
   }
 
-  /* Le classeur XLSX n'est pas dans la liste des extensions que l'aperçu
-     Claude autorise à télécharger : on le signale plutôt que de tenter un
-     lien qui n'y aboutirait à rien. */
+  /* Sur un aperçu Claude où la capacité de téléchargement n'a pas été accordée
+     à cette page, on le signale plutôt que de tenter un lien qui n'aboutirait
+     à rien. */
   function messageCanal(canal: CanalTelechargement, format: "pdf" | "xlsx" | "csv", nom: string): string {
     switch (canal) {
       case "refus":
         return "Export annulé.";
       case "format_indisponible":
         return format === "xlsx"
-          ? "Le format XLSX n'est pas proposé par cet aperçu Claude. Utilisez le CSV, ou ouvrez l'application installée pour le classeur complet."
-          : "Ce format n'est pas proposé par cet aperçu Claude. Ouvrez l'application installée pour l'obtenir.";
+          ? "Le téléchargement n'est pas disponible ici. Utilisez le CSV, ou ouvrez l'application installée pour le classeur complet."
+          : "Le téléchargement n'est pas disponible ici. Ouvrez l'application installée pour l'obtenir.";
       default:
         return format === "csv" ? `Registre exporté : ${nom}` : `Synthèse ${format.toUpperCase()} exportée (${retenus.length} dossier(s)).`;
     }
