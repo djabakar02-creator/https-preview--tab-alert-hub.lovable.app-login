@@ -13,6 +13,7 @@ const d: Dossier = {
   analyste: "analyste",
   statut: "en_instruction",
   pieces: [],
+  scanCourrier: null,
   observations: "",
   historique: [],
 };

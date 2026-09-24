@@ -30,7 +30,11 @@ import { creerRegistre } from "./registre.mjs";
 const DELAI_MS = 30_000;
 const FENETRE_MS = 60_000;
 const MAX_PAR_FENETRE = 20;
-const TAILLE_MAX = 256 * 1024;
+/* Un dossier peut porter le scan du courrier enregistré au bureau d'ordre,
+   encodé en base64 (environ +33 % sur la taille du fichier). 8 Mio laisse
+   une marge confortable pour un scan de quelques pages, tout en restant
+   loin de la mémoire disponible d'un service à fichier unique. */
+const TAILLE_MAX = 8 * 1024 * 1024;
 
 export function confDepuisEnvironnement(env = process.env) {
   return {

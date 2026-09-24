@@ -24,10 +24,28 @@ const CHAMPS = [
   "analyste",
   "statut",
   "pieces",
+  "scanCourrier",
   "observations",
   "historique",
   "version",
 ];
+
+/** Format attendu : URL de données (« data:type;base64,... »), telle que la produit FileReader côté navigateur. */
+const SCAN_DONNEES_RE = /^data:[\w.+-]+\/[\w.+-]+;base64,/;
+
+function nettoyerScan(s) {
+  if (!s || typeof s !== "object") return null;
+  const donnees = String(s.donnees ?? "");
+  if (!SCAN_DONNEES_RE.test(donnees)) return null;
+  return {
+    nom: String(s.nom ?? "scan").slice(0, 200),
+    type: String(s.type ?? "application/octet-stream").slice(0, 100),
+    taille: Number(s.taille) || 0,
+    donnees,
+    dateChargement: String(s.dateChargement ?? new Date().toISOString()),
+    chargePar: String(s.chargePar ?? ""),
+  };
+}
 
 /** Ne conserve que les champs connus : le client ne décide pas du schéma. */
 function nettoyer(d) {
@@ -43,6 +61,7 @@ function nettoyer(d) {
   out.analyste = out.analyste ?? null;
   out.sousType = out.sousType ?? null;
   out.pieces = Array.isArray(out.pieces) ? out.pieces.map((p) => ({ label: String(p?.label ?? ""), fourni: Boolean(p?.fourni) })) : [];
+  out.scanCourrier = nettoyerScan(out.scanCourrier);
   out.historique = Array.isArray(out.historique) ? out.historique.slice(-200) : [];
   out.observations = String(out.observations ?? "");
   return out;

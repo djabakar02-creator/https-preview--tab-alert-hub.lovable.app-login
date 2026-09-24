@@ -18,6 +18,7 @@ function dossier(over: Partial<Dossier> = {}): Dossier {
     analyste: "analyste",
     statut: "en_attente_pieces",
     pieces: piecesRequises("compte_devises_cemac").map((p, i) => ({ ...p, fourni: i < 2 })),
+    scanCourrier: null,
     observations: "",
     historique: [],
     ...over,

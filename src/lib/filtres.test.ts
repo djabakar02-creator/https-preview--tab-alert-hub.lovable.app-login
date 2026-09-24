@@ -19,6 +19,7 @@ function d(over: Partial<Dossier> = {}): Dossier {
     analyste: "analyste",
     statut: "en_instruction",
     pieces: piecesRequises("immobilier_hors_cemac"),
+    scanCourrier: null,
     observations: "",
     historique: [],
     ...over,

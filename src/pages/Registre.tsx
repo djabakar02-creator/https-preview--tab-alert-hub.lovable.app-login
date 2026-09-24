@@ -5,6 +5,7 @@ import { formatDateFR, formatDateTimeFR, toISODate } from "../lib/dates";
 import { delaiDuDossier, NIVEAU_LABELS, type Niveau } from "../lib/delais";
 import {
   DELAIS,
+  estScanFourni,
   fromCSV,
   newId,
   piecesRequises,
@@ -19,6 +20,7 @@ import {
   useDossiers,
   withEvent,
   type Dossier,
+  type ScanCourrier,
   type Statut,
   type TypeDossier,
 } from "../lib/dossiers";
@@ -27,6 +29,7 @@ import { useComptes, useDelais } from "../lib/parametres";
 import { correspond, ecrireTypes, lireTypes } from "../lib/filtres";
 import { Empty, estClos, fmtMontant, Modal, NiveauBadge, StatutBadge } from "../components/ui";
 import { rafraichirRegistre } from "../lib/dossiers";
+import { lireFichierScan } from "../lib/scan";
 
 /**
  * Exécute une écriture et rend le message du serveur en cas de refus.
@@ -47,6 +50,78 @@ async function ecrire(action: () => Promise<void>, signaler: (m: string) => void
 }
 
 const TYPE_DEFAUT: TypeDossier = "immobilier_hors_cemac";
+
+/* ------------------------------------------------------------------ */
+/* Scan du courrier (bureau d'ordre) — obligatoire avant clôture         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * La preuve que le dossier correspond à un courrier reçu et enregistré au
+ * bureau d'ordre, pas une pièce du dossier parmi d'autres : un filet rouge
+ * tant qu'elle manque, quel que soit le type d'opération, et un blocage
+ * réel des actions de clôture (côté service comme ici) tant qu'elle n'est
+ * pas chargée.
+ */
+function ScanCourrierChamp({
+  scan,
+  editable,
+  onCharger,
+  chargement,
+  erreur,
+}: {
+  scan: ScanCourrier | null;
+  editable: boolean;
+  onCharger: (file: File) => void;
+  chargement: boolean;
+  erreur: string | null;
+}) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  return (
+    <fieldset className="md:col-span-2">
+      <legend className="label-caps text-[10px] mb-2">Courrier enregistré au bureau d'ordre</legend>
+      <div className={`card p-3 flex flex-wrap items-center gap-3 border-l-[5px] ${scan ? "border-l-ok" : "border-l-rouge"}`}>
+        <span className={`inline-block w-2.5 h-2.5 border shrink-0 ${scan ? "bg-ok border-ok" : "bg-card border-rouge"}`} />
+        {scan ? (
+          <div className="text-sm flex-1 min-w-[200px]">
+            <a href={scan.donnees} target="_blank" rel="noopener" className="font-semibold underline decoration-dotted">
+              {scan.nom}
+            </a>
+            <span className="block text-xs text-muted">
+              {(scan.taille / 1024).toFixed(0)} Ko · chargé par {scan.chargePar} le {formatDateTimeFR(scan.dateChargement)}
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm text-rouge font-semibold flex-1 min-w-[200px]">
+            Scan manquant — <span className="uppercase tracking-wide">obligatoire</span> avant de valider ou rejeter ce dossier.
+          </p>
+        )}
+        {editable && (
+          <>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/*,.pdf,application/pdf"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) onCharger(f);
+              }}
+            />
+            <button type="button" className="btn-sm shrink-0" disabled={chargement} onClick={() => fileRef.current?.click()}>
+              {chargement ? "Chargement…" : scan ? "Remplacer" : "Charger le scan"}
+            </button>
+          </>
+        )}
+      </div>
+      {erreur && (
+        <p role="alert" className="text-xs text-rouge font-semibold mt-1.5">
+          {erreur}
+        </p>
+      )}
+    </fieldset>
+  );
+}
 
 /* ------------------------------------------------------------------ */
 /* Formulaire création / édition                                        */
@@ -76,12 +151,27 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
       analyste: user.role === "analyste" ? user.username : null,
       statut: "en_instruction",
       pieces: piecesRequises(TYPE_DEFAUT),
+      scanCourrier: null,
       observations: "",
       historique: [],
     },
   );
   const [erreurs, setErreurs] = useState<string[]>([]);
   const [envoi, setEnvoi] = useState(false);
+  const [chargementScan, setChargementScan] = useState(false);
+  const [erreurScan, setErreurScan] = useState<string | null>(null);
+
+  async function chargerScan(file: File) {
+    setErreurScan(null);
+    setChargementScan(true);
+    try {
+      set("scanCourrier", await lireFichierScan(file, user.username));
+    } catch (e) {
+      setErreurScan(e instanceof Error ? e.message : "Chargement impossible.");
+    } finally {
+      setChargementScan(false);
+    }
+  }
   const calc = delaiDuDossier(f);
   const set = <K extends keyof Dossier>(k: K, v: Dossier[K]) => setF((x) => ({ ...x, [k]: v }));
 
@@ -111,6 +201,8 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
     else if (f.dateReception > today) errs.push("La date de réception ne peut pas être postérieure à aujourd'hui.");
     if (!(f.delaiReglementaire > 0)) errs.push("Le délai réglementaire doit être un nombre de jours positif.");
     if (f.montant < 0) errs.push("Le montant ne peut pas être négatif.");
+    if (estClos(f.statut) && !estScanFourni(f))
+      errs.push("Le scan du courrier enregistré au bureau d'ordre est obligatoire pour clore un dossier.");
     if (errs.length) return setErreurs(errs);
 
     /* Un dossier créé par un analyste lui est automatiquement attribué. */
@@ -238,13 +330,24 @@ function DossierForm({ initial, onClose }: { initial: Dossier | null; onClose: (
           >
             {(Object.keys(STATUT_LABELS) as Statut[])
               .filter((s) => can.decide(user, f) || (s !== "valide" && s !== "rejete") || s === f.statut)
+              .filter((s) => !estClos(s) || s === f.statut || estScanFourni(f))
               .map((s) => (
                 <option key={s} value={s}>
                   {STATUT_LABELS[s]}
                 </option>
               ))}
           </select>
+          {estClos(f.statut) === false && !estScanFourni(f) && (
+            <span className="block text-[11px] text-muted mt-1">Validé / Rejeté indisponibles tant que le scan du courrier n'est pas chargé.</span>
+          )}
         </label>
+        <ScanCourrierChamp
+          scan={f.scanCourrier}
+          editable={!initial || can.edit(user, f)}
+          onCharger={chargerScan}
+          chargement={chargementScan}
+          erreur={erreurScan}
+        />
         <fieldset className="md:col-span-2">
           <legend className="label-caps text-[10px] mb-2">Pièces du dossier</legend>
           <div className="grid sm:grid-cols-2 gap-1.5">
@@ -300,10 +403,28 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
   const c = delaiDuDossier(d);
   const [reassign, setReassign] = useState<string>(d.analyste ?? "");
   const [confirmSuppr, setConfirmSuppr] = useState(false);
+  const [chargementScan, setChargementScan] = useState(false);
+  const [erreurScan, setErreurScan] = useState<string | null>(null);
   const clos = estClos(d.statut);
 
   const decider = (statut: Statut, action: string) =>
     void ecrire(() => upsertDossier(withEvent({ ...d, statut }, user.username, action)), signaler);
+
+  async function chargerScan(file: File) {
+    setErreurScan(null);
+    setChargementScan(true);
+    try {
+      const scan = await lireFichierScan(file, user.username);
+      await ecrire(
+        () => upsertDossier(withEvent({ ...d, scanCourrier: scan }, user.username, "Chargement du scan du courrier (bureau d'ordre)")),
+        signaler,
+      );
+    } catch (e) {
+      setErreurScan(e instanceof Error ? e.message : "Chargement impossible.");
+    } finally {
+      setChargementScan(false);
+    }
+  }
 
   return (
     <Modal title={d.reference} onClose={onClose} wide>
@@ -349,6 +470,13 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
               ))}
             </ul>
           </div>
+          <ScanCourrierChamp
+            scan={d.scanCourrier}
+            editable={can.edit(user, d)}
+            onCharger={chargerScan}
+            chargement={chargementScan}
+            erreur={erreurScan}
+          />
           {d.observations && (
             <div>
               <p className="label-caps text-[10px] mb-1">Observations</p>
@@ -377,10 +505,25 @@ function Fiche({ d, onClose, onEdit, signaler }: { d: Dossier; onClose: () => vo
           </button>
           {can.decide(user, d) && !clos && (
             <>
-              <button type="button" className="btn-ghost w-full bg-fort text-sur-fort" onClick={() => decider("valide", "Validation du dossier")}>
+              {!estScanFourni(d) && (
+                <p className="text-xs text-rouge font-semibold">Scan du courrier obligatoire avant de valider ou rejeter.</p>
+              )}
+              <button
+                type="button"
+                className="btn-ghost w-full bg-fort text-sur-fort"
+                disabled={!estScanFourni(d)}
+                title={estScanFourni(d) ? "" : "Chargez d'abord le scan du courrier (bureau d'ordre)"}
+                onClick={() => decider("valide", "Validation du dossier")}
+              >
                 Valider
               </button>
-              <button type="button" className="btn-danger w-full" onClick={() => decider("rejete", "Rejet du dossier")}>
+              <button
+                type="button"
+                className="btn-danger w-full"
+                disabled={!estScanFourni(d)}
+                title={estScanFourni(d) ? "" : "Chargez d'abord le scan du courrier (bureau d'ordre)"}
+                onClick={() => decider("rejete", "Rejet du dossier")}
+              >
                 Rejeter
               </button>
             </>
@@ -495,6 +638,8 @@ function ImportModal({ onClose, signaler }: { onClose: () => void; signaler: (m:
           . Seules <code className="font-mono text-xs">reference</code>, <code className="font-mono text-xs">demandeur</code>,{" "}
           <code className="font-mono text-xs">type</code> et <code className="font-mono text-xs">dateReception</code> sont obligatoires.
           Exportez d'abord depuis l'onglet Rapports pour obtenir un modèle : l'aller‑retour conserve alors les pièces et les observations.
+          Le scan du courrier (bureau d'ordre) ne se transmet pas par ce tableur : un dossier importé déjà clos devra recevoir le sien
+          avant toute nouvelle clôture, comme n'importe quel autre dossier.
         </p>
         <div className="flex flex-wrap gap-2 items-center">
           <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(e) => e.target.files?.[0] && lireFichier(e.target.files[0])} />

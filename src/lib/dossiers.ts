@@ -21,6 +21,18 @@ export interface Piece {
   fourni: boolean;
 }
 
+/** Scan du courrier enregistré au bureau d'ordre — obligatoire avant de clore un dossier. */
+export interface ScanCourrier {
+  nom: string;
+  type: string;
+  /** Taille du fichier d'origine, en octets. */
+  taille: number;
+  /** URL de données (« data:type;base64,... »). */
+  donnees: string;
+  dateChargement: string; // ISO datetime
+  chargePar: string; // nom d'utilisateur
+}
+
 export interface Evenement {
   date: string; // ISO datetime
   auteur: string;
@@ -46,6 +58,7 @@ export interface Dossier {
   analyste: string | null;
   statut: Statut;
   pieces: Piece[];
+  scanCourrier: ScanCourrier | null;
   observations: string;
   historique: Evenement[];
 }
@@ -64,6 +77,7 @@ export const DELAI_PAR_TYPE = MODELE.DELAI_PAR_TYPE as Record<TypeDossier, numbe
 
 export const piecesRequises = MODELE.piecesRequises as (type: TypeDossier) => Piece[];
 export const newId = MODELE.newId as () => string;
+export const estScanFourni = MODELE.estScanFourni as (d: Dossier) => boolean;
 
 
 /* ------------------------------------------------------------------ */
@@ -315,6 +329,10 @@ export function fromCSV(text: string): ImportResult {
          requises par le type, sans écraser silencieusement un état connu. */
       sousType: get("sousType") || null,
       pieces: decoderPieces(get("pieces"), type),
+      /* Le scan ne tient pas dans une cellule de tableur : un dossier importé
+         clos (statut validé/rejeté) devra recevoir le sien avant toute
+         nouvelle clôture, comme n'importe quel autre dossier. */
+      scanCourrier: null,
       observations: get("observations"),
       historique: [{ date: new Date().toISOString(), auteur: "import", action: "Import tableur" }],
     });

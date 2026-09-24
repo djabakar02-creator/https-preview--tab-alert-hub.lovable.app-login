@@ -13,6 +13,15 @@ const U = {
   lect: { username: "lecture", role: "lecture" },
 };
 
+const SCAN = {
+  nom: "courrier-2026-0043.pdf",
+  type: "application/pdf",
+  taille: 1234,
+  donnees: "data:application/pdf;base64,JVBERi0xLjQK",
+  dateChargement: new Date().toISOString(),
+  chargePar: "analyste",
+};
+
 let dossier;
 let reg;
 
@@ -65,10 +74,34 @@ describe("permissions vérifiées à l'écriture", () => {
   });
 
   it("la hiérarchie valide mais ne modifie pas le fond", () => {
-    const d = autrui();
+    /* Charger le scan est une édition du fond (réservée à l'analyste traitant
+       ou à l'admin) ; décider (valider/rejeter) en est une autre (réservée à
+       la hiérarchie ou à l'admin) : deux écritures distinctes, comme dans le
+       vrai flux de travail. */
+    const d = reg.enregistrer(U.admin, { ...autrui(), scanCourrier: SCAN });
     expect(reg.enregistrer(U.hier, { ...d, statut: "valide" }).statut).toBe("valide");
     const e = sien();
     expect(() => reg.enregistrer(U.hier, { ...e, demandeur: "Autre nom" })).toThrow(/autre analyste/);
+  });
+
+  it("le scan du courrier (bureau d'ordre) est obligatoire pour clore un dossier, quel que soit le profil", () => {
+    const d = autrui();
+    expect(() => reg.enregistrer(U.hier, { ...d, statut: "valide" })).toThrow(/scan du courrier/);
+    expect(() => reg.enregistrer(U.admin, { ...d, statut: "rejete" })).toThrow(/scan du courrier/);
+    /* Une fois le scan chargé, la clôture aboutit normalement. */
+    const avecScan = reg.enregistrer(U.admin, { ...d, scanCourrier: SCAN });
+    expect(reg.enregistrer(U.hier, { ...avecScan, statut: "rejete" }).statut).toBe("rejete");
+  });
+
+  it("un dossier créé déjà clos exige aussi le scan du courrier", () => {
+    const neuf = { ...sien(), id: "neuf-clos", version: undefined, statut: "valide" };
+    expect(() => reg.enregistrer(U.admin, neuf)).toThrow(/scan du courrier/);
+    expect(reg.enregistrer(U.admin, { ...neuf, scanCourrier: SCAN }).statut).toBe("valide");
+  });
+
+  it("un scan mal formé (sans URL de données) n'est pas retenu", () => {
+    const d = autrui();
+    expect(() => reg.enregistrer(U.admin, { ...d, statut: "valide", scanCourrier: { nom: "x.pdf" } })).toThrow(/scan du courrier/);
   });
 
   it("la hiérarchie réattribue un dossier", () => {

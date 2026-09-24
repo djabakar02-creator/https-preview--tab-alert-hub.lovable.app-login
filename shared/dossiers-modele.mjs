@@ -141,6 +141,16 @@ export function piecesRequises(type) {
 }
 
 /**
+ * Le scan du courrier enregistré au bureau d'ordre — la preuve que le
+ * dossier correspond bien à un courrier reçu et enregistré, pas une pièce
+ * du dossier parmi d'autres. Obligatoire pour tout dossier avant sa
+ * clôture (validation ou rejet), quel que soit le type d'opération.
+ */
+export function estScanFourni(d) {
+  return Boolean(d && d.scanCourrier && d.scanCourrier.donnees);
+}
+
+/**
  * Correspondance depuis l'ancien jeu de types.
  *
  * Seules les équivalences certaines figurent ici. « Transfert de fonds »,
@@ -195,6 +205,7 @@ export function donneesInitiales() {
     analyste,
     statut,
     pieces: piecesRequises(type).map((p, i) => ({ ...p, fourni: i < fournies })),
+    scanCourrier: null,
     observations: "",
     version: 1,
     historique: [
@@ -214,6 +225,17 @@ export function donneesInitiales() {
     mk(48, "Alliance Bâtiment SA", "compte_devises_hors_cemac", null, 320_000_000, "XAF", 35, "analyste", "valide", 3),
     mk(49, "Change Express SARL", "bureau_de_change", SOUS_TYPES.bureau_de_change[0], 0, "XAF", 11, "analyste", "en_instruction", 2),
   ];
+  /* Seul dossier déjà clos du jeu de démonstration : la clôture exige
+     désormais le scan du courrier, ce dossier en porte donc un. */
+  d[7].scanCourrier = {
+    nom: "courrier-bureau-ordre-0048.png",
+    type: "image/png",
+    taille: 68,
+    donnees:
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=",
+    dateChargement: ev("analyste", "", 3).date,
+    chargePar: "analyste",
+  };
   d[7].historique.push(ev("hierarchie", "Validation du dossier", 0));
   return d;
 }
@@ -245,8 +267,11 @@ export function refusEcriture(u, avant, suivant) {
     if (!PERMISSIONS.creer(u)) return "Votre profil ne permet pas de créer un dossier.";
     if (u.role === "analyste" && suivant.analyste !== u.username)
       return "Un analyste ne peut créer un dossier que pour lui-même.";
-    if (CLOS.includes(suivant.statut) && !PERMISSIONS.decider(u))
-      return "Votre profil ne permet pas de clore un dossier.";
+    if (CLOS.includes(suivant.statut)) {
+      if (!PERMISSIONS.decider(u)) return "Votre profil ne permet pas de clore un dossier.";
+      if (!estScanFourni(suivant))
+        return "Le scan du courrier enregistré au bureau d'ordre est obligatoire pour clore un dossier.";
+    }
     return null;
   }
 
@@ -255,9 +280,13 @@ export function refusEcriture(u, avant, suivant) {
   const changeReste =
     ["reference", "demandeur", "type", "sousType", "montant", "devise", "dateReception", "delaiReglementaire", "observations"].some(
       (k) => JSON.stringify(avant[k]) !== JSON.stringify(suivant[k]),
-    ) || JSON.stringify(avant.pieces) !== JSON.stringify(suivant.pieces);
+    ) ||
+    JSON.stringify(avant.pieces) !== JSON.stringify(suivant.pieces) ||
+    JSON.stringify(avant.scanCourrier) !== JSON.stringify(suivant.scanCourrier);
 
   if (changeDecision && !PERMISSIONS.decider(u)) return "Seule la hiérarchie peut valider ou rejeter un dossier.";
+  if (changeDecision && CLOS.includes(suivant.statut) && !estScanFourni(suivant))
+    return "Le scan du courrier enregistré au bureau d'ordre est obligatoire pour clore un dossier.";
   if (changeAnalyste && !(PERMISSIONS.reassigner(u) || PERMISSIONS.editer(u, avant)))
     return "Votre profil ne permet pas de réattribuer ce dossier.";
   if (changeReste && !PERMISSIONS.editer(u, avant))
